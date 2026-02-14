@@ -9,7 +9,7 @@
  * See LICENSE file for details.
  *
  * @author Lukas (BACH)
- * @version 1.3.0
+ * @version 1.4.0
  * @license MIT
  */
 
@@ -19,6 +19,8 @@ import { z } from "zod";
 import * as fs from "fs/promises";
 import * as fsSync from "fs";
 import * as path from "path";
+import * as crypto from "crypto";
+import * as os from "os";
 import { exec, spawn } from "child_process";
 import { promisify } from "util";
 
@@ -30,7 +32,7 @@ const execAsync = promisify(exec);
 
 const server = new McpServer({
   name: "bach-filecommander-mcp",
-  version: "1.3.0"
+  version: "1.4.0"
 });
 
 // ============================================================================
@@ -2395,6 +2397,1137 @@ Args:
         isError: true,
         content: [{ type: "text", text: `❌ Fehler beim Beenden: ${errorMsg}` }]
       };
+    }
+  }
+);
+
+// ============================================================================
+// Tool: Fix JSON
+// ============================================================================
+
+server.registerTool(
+  "fc_fix_json",
+  {
+    title: "JSON reparieren",
+    description: `Repariert häufige JSON-Fehler automatisch.
+
+Args:
+  - path (string): Pfad zur JSON-Datei
+  - dry_run (boolean, optional): Nur Probleme anzeigen, nicht reparieren
+  - create_backup (boolean, optional): Backup erstellen vor Reparatur
+
+Repariert: BOM, Trailing Commas, Single Quotes, Kommentare, NUL-Bytes`,
+    inputSchema: {
+      path: z.string().min(1).describe("Pfad zur JSON-Datei"),
+      dry_run: z.boolean().default(false).describe("Nur Probleme anzeigen"),
+      create_backup: z.boolean().default(true).describe("Backup erstellen")
+    },
+    annotations: {
+      readOnlyHint: false,
+      destructiveHint: false,
+      idempotentHint: true,
+      openWorldHint: false
+    }
+  },
+  async (params) => {
+    try {
+      const filePath = normalizePath(params.path);
+      if (!await pathExists(filePath)) {
+        return { isError: true, content: [{ type: "text", text: `❌ Datei nicht gefunden: ${filePath}` }] };
+      }
+
+      const rawContent = await fs.readFile(filePath, "utf-8");
+      const fixes: string[] = [];
+      let content = rawContent;
+
+      // Remove BOM
+      if (content.charCodeAt(0) === 0xFEFF) {
+        content = content.slice(1);
+        fixes.push("UTF-8 BOM entfernt");
+      }
+
+      // Remove NUL bytes
+      if (content.includes('\0')) {
+        content = content.replace(/\0/g, '');
+        fixes.push("NUL-Bytes entfernt");
+      }
+
+      // Remove single-line comments
+      const c1 = content;
+      content = content.replace(/^(\s*)\/\/.*$/gm, '');
+      if (content !== c1) fixes.push("Einzeilige Kommentare entfernt");
+
+      // Remove multi-line comments
+      const c2 = content;
+      content = content.replace(/\/\*[\s\S]*?\*\//g, '');
+      if (content !== c2) fixes.push("Mehrzeilige Kommentare entfernt");
+
+      // Fix trailing commas before } or ]
+      const c3 = content;
+      content = content.replace(/,(\s*[}\]])/g, '$1');
+      if (content !== c3) fixes.push("Trailing Commas entfernt");
+
+      // Fix single quotes to double quotes for keys and simple values
+      const c4 = content;
+      content = content.replace(/(\s*)'([^'\\]*(?:\\.[^'\\]*)*)'\s*:/g, '$1"$2":');
+      content = content.replace(/:\s*'([^'\\]*(?:\\.[^'\\]*)*)'/g, ': "$1"');
+      if (content !== c4) fixes.push("Single Quotes → Double Quotes");
+
+      // Try to parse
+      let isValid = false;
+      let parseError = '';
+      try { JSON.parse(content); isValid = true; } catch (e) { parseError = e instanceof Error ? e.message : String(e); }
+
+      if (fixes.length === 0 && isValid) {
+        return { content: [{ type: "text", text: `✅ ${path.basename(filePath)} ist bereits gültiges JSON.` }] };
+      }
+
+      if (params.dry_run) {
+        return {
+          content: [{ type: "text", text: [
+            `🔍 **JSON-Analyse: ${path.basename(filePath)}**`, '',
+            fixes.length > 0 ? `**Gefundene Probleme:**` : `Keine automatisch reparierbaren Probleme.`,
+            ...fixes.map(f => `  - ${f}`), '',
+            isValid ? `✅ Nach Reparatur: Gültiges JSON` : `⚠️ Nach Reparatur noch ungültig: ${parseError}`
+          ].join('\n') }]
+        };
+      }
+
+      if (params.create_backup && fixes.length > 0) {
+        await fs.writeFile(filePath + '.bak', rawContent, "utf-8");
+      }
+
+      if (isValid) {
+        content = JSON.stringify(JSON.parse(content), null, 2);
+      }
+      await fs.writeFile(filePath, content, "utf-8");
+
+      return {
+        content: [{ type: "text", text: [
+          `✅ **JSON repariert: ${path.basename(filePath)}**`, '',
+          ...fixes.map(f => `  - ${f}`), '',
+          isValid ? `✅ Gültiges JSON` : `⚠️ Noch ungültig: ${parseError}`,
+          params.create_backup ? `📋 Backup: ${filePath}.bak` : ''
+        ].join('\n') }]
+      };
+    } catch (error) {
+      return { isError: true, content: [{ type: "text", text: `❌ Fehler: ${error instanceof Error ? error.message : String(error)}` }] };
+    }
+  }
+);
+
+// ============================================================================
+// Tool: Validate JSON
+// ============================================================================
+
+server.registerTool(
+  "fc_validate_json",
+  {
+    title: "JSON validieren",
+    description: `Validiert eine JSON-Datei und zeigt detaillierte Fehlerinformationen.
+
+Args:
+  - path (string): Pfad zur JSON-Datei
+
+Returns:
+  - Validierungsstatus mit Zeile/Spalte bei Fehlern`,
+    inputSchema: {
+      path: z.string().min(1).describe("Pfad zur JSON-Datei")
+    },
+    annotations: {
+      readOnlyHint: true,
+      destructiveHint: false,
+      idempotentHint: true,
+      openWorldHint: false
+    }
+  },
+  async (params) => {
+    try {
+      const filePath = normalizePath(params.path);
+      if (!await pathExists(filePath)) {
+        return { isError: true, content: [{ type: "text", text: `❌ Datei nicht gefunden: ${filePath}` }] };
+      }
+
+      const content = await fs.readFile(filePath, "utf-8");
+      const stats = await fs.stat(filePath);
+
+      try {
+        const parsed = JSON.parse(content);
+        const keyCount = typeof parsed === 'object' && parsed !== null ? Object.keys(parsed).length : 0;
+        const type = Array.isArray(parsed) ? `Array (${parsed.length} Elemente)` : typeof parsed === 'object' && parsed !== null ? `Objekt (${keyCount} Schlüssel)` : typeof parsed;
+
+        return {
+          content: [{ type: "text", text: [
+            `✅ **Gültiges JSON: ${path.basename(filePath)}**`, '',
+            `| Eigenschaft | Wert |`, `|---|---|`,
+            `| Typ | ${type} |`,
+            `| Größe | ${formatFileSize(stats.size)} |`,
+            `| BOM | ${content.charCodeAt(0) === 0xFEFF ? '⚠️ Ja' : 'Nein'} |`,
+            `| Encoding | UTF-8 |`
+          ].join('\n') }]
+        };
+      } catch (e) {
+        const errorMsg = e instanceof Error ? e.message : String(e);
+        // Extract position from error message
+        const posMatch = errorMsg.match(/position\s+(\d+)/i);
+        let lineInfo = '';
+        if (posMatch) {
+          const pos = parseInt(posMatch[1]);
+          const before = content.substring(0, pos);
+          const line = before.split('\n').length;
+          const col = pos - before.lastIndexOf('\n');
+          const lines = content.split('\n');
+          const contextLines = lines.slice(Math.max(0, line - 3), line + 2);
+          lineInfo = `\n**Fehlerposition:** Zeile ${line}, Spalte ${col}\n\n\`\`\`\n${contextLines.map((l, i) => `${Math.max(1, line - 2) + i}: ${l}`).join('\n')}\n\`\`\``;
+        }
+
+        return {
+          content: [{ type: "text", text: `❌ **Ungültiges JSON: ${path.basename(filePath)}**\n\n**Fehler:** ${errorMsg}${lineInfo}\n\n💡 Nutze \`fc_fix_json\` für automatische Reparatur.` }]
+        };
+      }
+    } catch (error) {
+      return { isError: true, content: [{ type: "text", text: `❌ Fehler: ${error instanceof Error ? error.message : String(error)}` }] };
+    }
+  }
+);
+
+// ============================================================================
+// Tool: Cleanup File
+// ============================================================================
+
+server.registerTool(
+  "fc_cleanup_file",
+  {
+    title: "Datei bereinigen",
+    description: `Bereinigt eine oder mehrere Dateien von häufigen Problemen.
+
+Args:
+  - path (string): Pfad zu Datei oder Verzeichnis
+  - recursive (boolean, optional): Bei Verzeichnis rekursiv
+  - extensions (string, optional): Dateierweiterungen filtern (z.B. ".txt,.json,.py")
+  - remove_bom (boolean): UTF-8 BOM entfernen
+  - remove_trailing_whitespace (boolean): Trailing Whitespace entfernen
+  - normalize_line_endings (string, optional): "lf" | "crlf" | null
+  - remove_nul_bytes (boolean): NUL-Bytes entfernen
+  - dry_run (boolean): Nur anzeigen
+
+Bereinigt: BOM, NUL-Bytes, Trailing Whitespace, Line Endings`,
+    inputSchema: {
+      path: z.string().min(1).describe("Pfad zu Datei/Verzeichnis"),
+      recursive: z.boolean().default(false).describe("Rekursiv"),
+      extensions: z.string().optional().describe("Erweiterungen filtern (.txt,.json)"),
+      remove_bom: z.boolean().default(true).describe("BOM entfernen"),
+      remove_trailing_whitespace: z.boolean().default(true).describe("Trailing Whitespace"),
+      normalize_line_endings: z.enum(["lf", "crlf"]).optional().describe("Line Endings"),
+      remove_nul_bytes: z.boolean().default(true).describe("NUL-Bytes entfernen"),
+      dry_run: z.boolean().default(false).describe("Nur anzeigen")
+    },
+    annotations: {
+      readOnlyHint: false,
+      destructiveHint: false,
+      idempotentHint: true,
+      openWorldHint: false
+    }
+  },
+  async (params) => {
+    try {
+      const targetPath = normalizePath(params.path);
+      if (!await pathExists(targetPath)) {
+        return { isError: true, content: [{ type: "text", text: `❌ Pfad nicht gefunden: ${targetPath}` }] };
+      }
+
+      const stats = await fs.stat(targetPath);
+      const extFilter = params.extensions ? params.extensions.split(',').map(e => e.trim().toLowerCase()) : null;
+
+      // Collect files
+      const files: string[] = [];
+      if (stats.isDirectory()) {
+        async function collectFiles(dir: string): Promise<void> {
+          const entries = await fs.readdir(dir, { withFileTypes: true });
+          for (const entry of entries) {
+            const full = path.join(dir, entry.name);
+            if (entry.isDirectory() && params.recursive) {
+              if (!['node_modules', '.git', '$RECYCLE.BIN'].includes(entry.name)) {
+                await collectFiles(full);
+              }
+            } else if (entry.isFile()) {
+              if (!extFilter || extFilter.includes(path.extname(entry.name).toLowerCase())) {
+                files.push(full);
+              }
+            }
+          }
+        }
+        await collectFiles(targetPath);
+      } else {
+        files.push(targetPath);
+      }
+
+      const results: string[] = [];
+      let totalFixed = 0;
+
+      for (const filePath of files) {
+        try {
+          const raw = await fs.readFile(filePath, "utf-8");
+          let content = raw;
+          const fixes: string[] = [];
+
+          if (params.remove_bom && content.charCodeAt(0) === 0xFEFF) {
+            content = content.slice(1);
+            fixes.push("BOM");
+          }
+          if (params.remove_nul_bytes && content.includes('\0')) {
+            content = content.replace(/\0/g, '');
+            fixes.push("NUL");
+          }
+          if (params.remove_trailing_whitespace) {
+            const c = content;
+            content = content.replace(/[ \t]+$/gm, '');
+            if (content !== c) fixes.push("Whitespace");
+          }
+          if (params.normalize_line_endings) {
+            const c = content;
+            content = content.replace(/\r\n/g, '\n');
+            if (params.normalize_line_endings === 'crlf') {
+              content = content.replace(/\n/g, '\r\n');
+            }
+            if (content !== c) fixes.push(params.normalize_line_endings.toUpperCase());
+          }
+
+          if (fixes.length > 0) {
+            if (!params.dry_run) {
+              await fs.writeFile(filePath, content, "utf-8");
+            }
+            results.push(`  ✅ ${path.relative(targetPath, filePath) || path.basename(filePath)} [${fixes.join(', ')}]`);
+            totalFixed++;
+          }
+        } catch {
+          // Skip binary/unreadable files
+        }
+      }
+
+      if (totalFixed === 0) {
+        return { content: [{ type: "text", text: `✅ Keine Bereinigung nötig. ${files.length} Dateien geprüft.` }] };
+      }
+
+      return {
+        content: [{ type: "text", text: [
+          `${params.dry_run ? '🔍 **Vorschau**' : '✅ **Bereinigt**'}: ${totalFixed}/${files.length} Dateien`, '',
+          ...results
+        ].join('\n') }]
+      };
+    } catch (error) {
+      return { isError: true, content: [{ type: "text", text: `❌ Fehler: ${error instanceof Error ? error.message : String(error)}` }] };
+    }
+  }
+);
+
+// ============================================================================
+// Tool: Fix Encoding
+// ============================================================================
+
+server.registerTool(
+  "fc_fix_encoding",
+  {
+    title: "Encoding reparieren",
+    description: `Erkennt und repariert Encoding-Fehler (Mojibake, doppeltes UTF-8).
+
+Args:
+  - path (string): Pfad zur Datei
+  - dry_run (boolean): Nur Probleme anzeigen
+  - create_backup (boolean): Backup erstellen
+
+Repariert häufige Mojibake-Muster wie:
+  - Ã¤ → ä, Ã¶ → ö, Ã¼ → ü
+  - Ã„ → Ä, Ã– → Ö, Ãœ → Ü
+  - ÃŸ → ß, â‚¬ → €`,
+    inputSchema: {
+      path: z.string().min(1).describe("Pfad zur Datei"),
+      dry_run: z.boolean().default(false).describe("Nur anzeigen"),
+      create_backup: z.boolean().default(true).describe("Backup erstellen")
+    },
+    annotations: {
+      readOnlyHint: false,
+      destructiveHint: false,
+      idempotentHint: true,
+      openWorldHint: false
+    }
+  },
+  async (params) => {
+    try {
+      const filePath = normalizePath(params.path);
+      if (!await pathExists(filePath)) {
+        return { isError: true, content: [{ type: "text", text: `❌ Datei nicht gefunden: ${filePath}` }] };
+      }
+
+      const rawContent = await fs.readFile(filePath, "utf-8");
+
+      // Common Mojibake patterns (UTF-8 decoded as Latin-1 then re-encoded as UTF-8)
+      const mojibakeMap: [RegExp, string, string][] = [
+        [/Ã¤/g, 'ä', 'ä'], [/Ã¶/g, 'ö', 'ö'], [/Ã¼/g, 'ü', 'ü'],
+        [/Ã„/g, 'Ä', 'Ä'], [/Ã–/g, 'Ö', 'Ö'], [/Ãœ/g, 'Ü', 'Ü'],
+        [/ÃŸ/g, 'ß', 'ß'], [/â‚¬/g, '€', '€'],
+        [/Ã©/g, 'é', 'é'], [/Ã¨/g, 'è', 'è'],
+        [/Ã /g, 'à', 'à'], [/Ã¡/g, 'á', 'á'],
+        [/Ã®/g, 'î', 'î'], [/Ã¯/g, 'ï', 'ï'],
+        [/Ã´/g, 'ô', 'ô'], [/Ã¹/g, 'ù', 'ù'],
+        [/Ã§/g, 'ç', 'ç'], [/Ã±/g, 'ñ', 'ñ'],
+        [/\u00e2\u0080\u0093/g, '\u2013', 'en-dash'], [/\u00e2\u0080\u0094/g, '\u2014', 'em-dash'],
+        [/\u00e2\u0080\u009c/g, '\u201C', 'left-dquote'], [/\u00e2\u0080\u009d/g, '\u201D', 'right-dquote'],
+        [/\u00e2\u0080\u0098/g, '\u2018', 'left-squote'], [/\u00e2\u0080\u0099/g, '\u2019', 'right-squote'],
+        [/\u00c2\u00a0/g, ' ', 'NBSP'], [/\u00c2\u00a9/g, '\u00A9', '\u00A9'],
+        [/\u00c2\u00ae/g, '\u00AE', '\u00AE'], [/\u00c2\u00b0/g, '\u00B0', '\u00B0'],
+      ];
+
+      let content = rawContent;
+      const fixes: string[] = [];
+
+      for (const [pattern, replacement, label] of mojibakeMap) {
+        const before = content;
+        content = content.replace(pattern, replacement);
+        if (content !== before) {
+          const count = (before.match(pattern) || []).length;
+          fixes.push(`${label} (${count}x)`);
+        }
+      }
+
+      if (fixes.length === 0) {
+        return { content: [{ type: "text", text: `✅ Keine Encoding-Fehler in ${path.basename(filePath)} gefunden.` }] };
+      }
+
+      if (params.dry_run) {
+        return {
+          content: [{ type: "text", text: [
+            `🔍 **Encoding-Analyse: ${path.basename(filePath)}**`, '',
+            `**Gefundene Mojibake-Muster:**`,
+            ...fixes.map(f => `  - ${f}`)
+          ].join('\n') }]
+        };
+      }
+
+      if (params.create_backup) {
+        await fs.writeFile(filePath + '.bak', rawContent, "utf-8");
+      }
+      await fs.writeFile(filePath, content, "utf-8");
+
+      return {
+        content: [{ type: "text", text: [
+          `✅ **Encoding repariert: ${path.basename(filePath)}**`, '',
+          ...fixes.map(f => `  - ${f}`),
+          params.create_backup ? `\n📋 Backup: ${filePath}.bak` : ''
+        ].join('\n') }]
+      };
+    } catch (error) {
+      return { isError: true, content: [{ type: "text", text: `❌ Fehler: ${error instanceof Error ? error.message : String(error)}` }] };
+    }
+  }
+);
+
+// ============================================================================
+// Tool: Folder Diff
+// ============================================================================
+
+server.registerTool(
+  "fc_folder_diff",
+  {
+    title: "Verzeichnis-Änderungen erkennen",
+    description: `Vergleicht den aktuellen Zustand eines Verzeichnisses mit einem gespeicherten Snapshot.
+
+Args:
+  - path (string): Pfad zum Verzeichnis
+  - save_snapshot (boolean): Aktuellen Zustand als neuen Snapshot speichern
+  - extensions (string, optional): Dateierweiterungen filtern
+
+Erkennt: Neue Dateien, geänderte Dateien, gelöschte Dateien
+Snapshots werden in %TEMP%/.fc_snapshots/ gespeichert.`,
+    inputSchema: {
+      path: z.string().min(1).describe("Pfad zum Verzeichnis"),
+      save_snapshot: z.boolean().default(true).describe("Snapshot speichern"),
+      extensions: z.string().optional().describe("Erweiterungen filtern")
+    },
+    annotations: {
+      readOnlyHint: true,
+      destructiveHint: false,
+      idempotentHint: true,
+      openWorldHint: false
+    }
+  },
+  async (params) => {
+    try {
+      const dirPath = normalizePath(params.path);
+      if (!await pathExists(dirPath)) {
+        return { isError: true, content: [{ type: "text", text: `❌ Verzeichnis nicht gefunden: ${dirPath}` }] };
+      }
+
+      const extFilter = params.extensions ? params.extensions.split(',').map(e => e.trim().toLowerCase()) : null;
+      const snapshotDir = path.join(os.tmpdir(), '.fc_snapshots');
+      const snapshotId = crypto.createHash('md5').update(dirPath).digest('hex');
+      const snapshotFile = path.join(snapshotDir, `${snapshotId}.json`);
+
+      // Scan current state
+      interface FileEntry { size: number; mtime: number; }
+      const currentState: Record<string, FileEntry> = {};
+
+      async function scanDir(dir: string): Promise<void> {
+        try {
+          const entries = await fs.readdir(dir, { withFileTypes: true });
+          for (const entry of entries) {
+            const full = path.join(dir, entry.name);
+            if (entry.isDirectory()) {
+              if (!['node_modules', '.git', '$RECYCLE.BIN'].includes(entry.name)) {
+                await scanDir(full);
+              }
+            } else if (entry.isFile()) {
+              if (!extFilter || extFilter.includes(path.extname(entry.name).toLowerCase())) {
+                const stats = await fs.stat(full);
+                const rel = path.relative(dirPath, full);
+                currentState[rel] = { size: stats.size, mtime: stats.mtimeMs };
+              }
+            }
+          }
+        } catch { /* skip inaccessible dirs */ }
+      }
+      await scanDir(dirPath);
+
+      // Load previous snapshot
+      let previousState: Record<string, FileEntry> = {};
+      let hasSnapshot = false;
+      try {
+        const data = await fs.readFile(snapshotFile, "utf-8");
+        previousState = JSON.parse(data);
+        hasSnapshot = true;
+      } catch { /* no previous snapshot */ }
+
+      // Compare
+      const newFiles: string[] = [];
+      const modifiedFiles: string[] = [];
+      const deletedFiles: string[] = [];
+
+      for (const [rel, entry] of Object.entries(currentState)) {
+        if (!previousState[rel]) {
+          newFiles.push(rel);
+        } else if (entry.size !== previousState[rel].size || Math.abs(entry.mtime - previousState[rel].mtime) > 1000) {
+          modifiedFiles.push(rel);
+        }
+      }
+      for (const rel of Object.keys(previousState)) {
+        if (!currentState[rel]) {
+          deletedFiles.push(rel);
+        }
+      }
+
+      // Save snapshot
+      if (params.save_snapshot) {
+        await fs.mkdir(snapshotDir, { recursive: true });
+        await fs.writeFile(snapshotFile, JSON.stringify(currentState), "utf-8");
+      }
+
+      const totalFiles = Object.keys(currentState).length;
+      const totalChanges = newFiles.length + modifiedFiles.length + deletedFiles.length;
+
+      if (!hasSnapshot) {
+        return {
+          content: [{ type: "text", text: [
+            `📸 **Erster Snapshot erstellt: ${path.basename(dirPath)}**`, '',
+            `| | |`, `|---|---|`,
+            `| Dateien | ${totalFiles} |`,
+            `| Snapshot | ${snapshotFile} |`, '',
+            `Beim nächsten Aufruf werden Änderungen erkannt.`
+          ].join('\n') }]
+        };
+      }
+
+      if (totalChanges === 0) {
+        return { content: [{ type: "text", text: `✅ Keine Änderungen in ${path.basename(dirPath)}. ${totalFiles} Dateien geprüft.` }] };
+      }
+
+      const output = [
+        `📊 **Verzeichnis-Diff: ${path.basename(dirPath)}**`, '',
+        `| Kategorie | Anzahl |`, `|---|---|`,
+        `| Neue Dateien | ${newFiles.length} |`,
+        `| Geändert | ${modifiedFiles.length} |`,
+        `| Gelöscht | ${deletedFiles.length} |`,
+        `| Unverändert | ${totalFiles - newFiles.length - modifiedFiles.length} |`
+      ];
+
+      if (newFiles.length > 0) {
+        output.push('', '**Neue Dateien:**', ...newFiles.slice(0, 50).map(f => `  🟢 ${f}`));
+        if (newFiles.length > 50) output.push(`  ... und ${newFiles.length - 50} weitere`);
+      }
+      if (modifiedFiles.length > 0) {
+        output.push('', '**Geänderte Dateien:**', ...modifiedFiles.slice(0, 50).map(f => `  🟡 ${f}`));
+        if (modifiedFiles.length > 50) output.push(`  ... und ${modifiedFiles.length - 50} weitere`);
+      }
+      if (deletedFiles.length > 0) {
+        output.push('', '**Gelöschte Dateien:**', ...deletedFiles.slice(0, 50).map(f => `  🔴 ${f}`));
+        if (deletedFiles.length > 50) output.push(`  ... und ${deletedFiles.length - 50} weitere`);
+      }
+
+      return { content: [{ type: "text", text: output.join('\n') }] };
+    } catch (error) {
+      return { isError: true, content: [{ type: "text", text: `❌ Fehler: ${error instanceof Error ? error.message : String(error)}` }] };
+    }
+  }
+);
+
+// ============================================================================
+// Tool: Batch Rename
+// ============================================================================
+
+server.registerTool(
+  "fc_batch_rename",
+  {
+    title: "Batch-Umbenennung",
+    description: `Benennt Dateien nach Muster um: Prefix/Suffix entfernen, ersetzen, oder Pattern.
+
+Args:
+  - directory (string): Verzeichnis mit den Dateien
+  - mode (string): "remove_prefix" | "remove_suffix" | "replace" | "auto_detect"
+  - pattern (string, optional): Zu entfernender/ersetzender Text
+  - replacement (string, optional): Ersetzungstext (für replace-Modus)
+  - extensions (string, optional): Nur bestimmte Erweiterungen
+  - dry_run (boolean): Nur Vorschau
+
+Beispiele:
+  - Prefix entfernen: mode="remove_prefix", pattern="backup_"
+  - Auto-Detect: mode="auto_detect" erkennt gemeinsame Prefixe`,
+    inputSchema: {
+      directory: z.string().min(1).describe("Verzeichnis"),
+      mode: z.enum(["remove_prefix", "remove_suffix", "replace", "auto_detect"]).describe("Modus"),
+      pattern: z.string().optional().describe("Zu entfernender/ersetzender Text"),
+      replacement: z.string().default("").describe("Ersetzungstext"),
+      extensions: z.string().optional().describe("Erweiterungen filtern"),
+      dry_run: z.boolean().default(true).describe("Nur Vorschau")
+    },
+    annotations: {
+      readOnlyHint: false,
+      destructiveHint: true,
+      idempotentHint: false,
+      openWorldHint: false
+    }
+  },
+  async (params) => {
+    try {
+      const dirPath = normalizePath(params.directory);
+      if (!await pathExists(dirPath)) {
+        return { isError: true, content: [{ type: "text", text: `❌ Verzeichnis nicht gefunden: ${dirPath}` }] };
+      }
+
+      const extFilter = params.extensions ? params.extensions.split(',').map(e => e.trim().toLowerCase()) : null;
+      const entries = await fs.readdir(dirPath, { withFileTypes: true });
+      const files = entries.filter(e => e.isFile() && (!extFilter || extFilter.includes(path.extname(e.name).toLowerCase())));
+
+      if (files.length === 0) {
+        return { content: [{ type: "text", text: `🔍 Keine passenden Dateien in ${dirPath}` }] };
+      }
+
+      const renames: { old: string; new: string }[] = [];
+
+      if (params.mode === 'auto_detect') {
+        // Find common prefix
+        const names = files.map(f => f.name);
+        let commonPrefix = names[0] || '';
+        for (let i = 1; i < names.length; i++) {
+          while (!names[i].startsWith(commonPrefix) && commonPrefix.length > 0) {
+            commonPrefix = commonPrefix.slice(0, -1);
+          }
+        }
+        // Find common suffix (before extension)
+        const stems = files.map(f => path.parse(f.name).name);
+        let commonSuffix = stems[0] || '';
+        for (let i = 1; i < stems.length; i++) {
+          while (!stems[i].endsWith(commonSuffix) && commonSuffix.length > 0) {
+            commonSuffix = commonSuffix.slice(1);
+          }
+        }
+
+        const detections: string[] = [];
+        if (commonPrefix.length >= 3) detections.push(`Prefix: "${commonPrefix}"`);
+        if (commonSuffix.length >= 3) detections.push(`Suffix: "${commonSuffix}"`);
+
+        if (detections.length === 0) {
+          return { content: [{ type: "text", text: `🔍 Kein gemeinsames Muster erkannt bei ${files.length} Dateien.` }] };
+        }
+
+        // Use prefix if found
+        if (commonPrefix.length >= 3) {
+          for (const f of files) {
+            const newName = f.name.slice(commonPrefix.length);
+            if (newName.length > 0) {
+              renames.push({ old: f.name, new: newName });
+            }
+          }
+        }
+
+        return {
+          content: [{ type: "text", text: [
+            `🔍 **Auto-Detect: ${files.length} Dateien**`, '',
+            `Erkannte Muster: ${detections.join(', ')}`, '',
+            renames.length > 0 ? `**Vorgeschlagene Umbenennung (Prefix "${commonPrefix}" entfernen):**` : '',
+            ...renames.slice(0, 30).map(r => `  ${r.old} → ${r.new}`),
+            renames.length > 30 ? `  ... und ${renames.length - 30} weitere` : '', '',
+            `💡 Nutze \`mode="remove_prefix", pattern="${commonPrefix}", dry_run=false\` zum Ausführen.`
+          ].join('\n') }]
+        };
+      }
+
+      if (!params.pattern) {
+        return { isError: true, content: [{ type: "text", text: `❌ 'pattern' erforderlich für Modus "${params.mode}".` }] };
+      }
+
+      for (const f of files) {
+        let newName: string;
+        switch (params.mode) {
+          case 'remove_prefix':
+            newName = f.name.startsWith(params.pattern) ? f.name.slice(params.pattern.length) : f.name;
+            break;
+          case 'remove_suffix': {
+            const parsed = path.parse(f.name);
+            newName = parsed.name.endsWith(params.pattern) ? parsed.name.slice(0, -params.pattern.length) + parsed.ext : f.name;
+            break;
+          }
+          case 'replace':
+            newName = f.name.replace(new RegExp(params.pattern.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'), params.replacement);
+            break;
+          default:
+            newName = f.name;
+        }
+
+        if (newName !== f.name && newName.length > 0) {
+          renames.push({ old: f.name, new: newName });
+        }
+      }
+
+      if (renames.length === 0) {
+        return { content: [{ type: "text", text: `🔍 Keine Dateien passen zum Muster "${params.pattern}".` }] };
+      }
+
+      if (params.dry_run) {
+        return {
+          content: [{ type: "text", text: [
+            `🔍 **Vorschau: ${renames.length} Umbenennungen**`, '',
+            ...renames.map(r => `  ${r.old} → ${r.new}`), '',
+            `💡 Setze \`dry_run=false\` zum Ausführen.`
+          ].join('\n') }]
+        };
+      }
+
+      let successCount = 0;
+      const errors: string[] = [];
+      for (const r of renames) {
+        try {
+          await fs.rename(path.join(dirPath, r.old), path.join(dirPath, r.new));
+          successCount++;
+        } catch (e) {
+          errors.push(`${r.old}: ${e instanceof Error ? e.message : String(e)}`);
+        }
+      }
+
+      return {
+        content: [{ type: "text", text: [
+          `✅ **${successCount}/${renames.length} Dateien umbenannt**`,
+          ...errors.map(e => `  ❌ ${e}`)
+        ].join('\n') }]
+      };
+    } catch (error) {
+      return { isError: true, content: [{ type: "text", text: `❌ Fehler: ${error instanceof Error ? error.message : String(error)}` }] };
+    }
+  }
+);
+
+// ============================================================================
+// Tool: Convert Format
+// ============================================================================
+
+server.registerTool(
+  "fc_convert_format",
+  {
+    title: "Format konvertieren",
+    description: `Konvertiert Dateien zwischen verschiedenen Formaten.
+
+Args:
+  - input_path (string): Pfad zur Quelldatei
+  - output_path (string): Pfad zur Zieldatei
+  - input_format (string): "json" | "csv" | "ini"
+  - output_format (string): "json" | "csv" | "ini"
+  - json_indent (number, optional): Einrückung für JSON (default: 2)
+
+Unterstützte Konvertierungen:
+  - JSON ↔ CSV (bei Arrays von Objekten)
+  - JSON ↔ INI (bei flachen Objekten/Sektionen)
+  - JSON pretty-print / minify`,
+    inputSchema: {
+      input_path: z.string().min(1).describe("Quelldatei"),
+      output_path: z.string().min(1).describe("Zieldatei"),
+      input_format: z.enum(["json", "csv", "ini"]).describe("Eingabeformat"),
+      output_format: z.enum(["json", "csv", "ini"]).describe("Ausgabeformat"),
+      json_indent: z.number().int().min(0).max(8).default(2).describe("JSON Einrückung")
+    },
+    annotations: {
+      readOnlyHint: false,
+      destructiveHint: false,
+      idempotentHint: true,
+      openWorldHint: false
+    }
+  },
+  async (params) => {
+    try {
+      const inputPath = normalizePath(params.input_path);
+      const outputPath = normalizePath(params.output_path);
+      if (!await pathExists(inputPath)) {
+        return { isError: true, content: [{ type: "text", text: `❌ Quelldatei nicht gefunden: ${inputPath}` }] };
+      }
+
+      const rawContent = await fs.readFile(inputPath, "utf-8");
+      let data: unknown;
+
+      // Parse input
+      switch (params.input_format) {
+        case 'json':
+          data = JSON.parse(rawContent);
+          break;
+        case 'csv': {
+          const lines = rawContent.trim().split('\n');
+          if (lines.length < 2) {
+            return { isError: true, content: [{ type: "text", text: `❌ CSV benötigt mindestens Header + 1 Datenzeile.` }] };
+          }
+          const headers = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g, ''));
+          data = lines.slice(1).map(line => {
+            const vals = line.split(',').map(v => v.trim().replace(/^"|"$/g, ''));
+            const obj: Record<string, string> = {};
+            headers.forEach((h, i) => { obj[h] = vals[i] || ''; });
+            return obj;
+          });
+          break;
+        }
+        case 'ini': {
+          const result: Record<string, Record<string, string>> = {};
+          let currentSection = '_default';
+          result[currentSection] = {};
+          for (const line of rawContent.split('\n')) {
+            const trimmed = line.trim();
+            if (!trimmed || trimmed.startsWith(';') || trimmed.startsWith('#')) continue;
+            const sectionMatch = trimmed.match(/^\[(.+)\]$/);
+            if (sectionMatch) {
+              currentSection = sectionMatch[1];
+              result[currentSection] = result[currentSection] || {};
+            } else {
+              const eqIdx = trimmed.indexOf('=');
+              if (eqIdx > 0) {
+                const key = trimmed.substring(0, eqIdx).trim();
+                const val = trimmed.substring(eqIdx + 1).trim();
+                result[currentSection][key] = val;
+              }
+            }
+          }
+          // Remove empty default section
+          if (Object.keys(result._default).length === 0) delete result._default;
+          data = result;
+          break;
+        }
+      }
+
+      // Generate output
+      let output: string;
+      switch (params.output_format) {
+        case 'json':
+          output = JSON.stringify(data, null, params.json_indent || undefined);
+          break;
+        case 'csv': {
+          if (!Array.isArray(data)) {
+            return { isError: true, content: [{ type: "text", text: `❌ CSV-Export erfordert ein JSON-Array von Objekten.` }] };
+          }
+          const headers = Object.keys(data[0] || {});
+          const rows = data.map((item: Record<string, unknown>) =>
+            headers.map(h => {
+              const val = String(item[h] ?? '');
+              return val.includes(',') || val.includes('"') ? `"${val.replace(/"/g, '""')}"` : val;
+            }).join(',')
+          );
+          output = [headers.join(','), ...rows].join('\n');
+          break;
+        }
+        case 'ini': {
+          if (typeof data !== 'object' || data === null || Array.isArray(data)) {
+            return { isError: true, content: [{ type: "text", text: `❌ INI-Export erfordert ein JSON-Objekt.` }] };
+          }
+          const lines: string[] = [];
+          for (const [section, values] of Object.entries(data as Record<string, unknown>)) {
+            if (typeof values === 'object' && values !== null && !Array.isArray(values)) {
+              lines.push(`[${section}]`);
+              for (const [key, val] of Object.entries(values as Record<string, unknown>)) {
+                lines.push(`${key} = ${val}`);
+              }
+              lines.push('');
+            } else {
+              lines.push(`${section} = ${values}`);
+            }
+          }
+          output = lines.join('\n');
+          break;
+        }
+      }
+
+      // Ensure output directory exists
+      const outDir = path.dirname(outputPath);
+      if (!await pathExists(outDir)) {
+        await fs.mkdir(outDir, { recursive: true });
+      }
+
+      await fs.writeFile(outputPath, output, "utf-8");
+      const outStats = await fs.stat(outputPath);
+
+      return {
+        content: [{ type: "text", text: [
+          `✅ **Konvertiert: ${params.input_format.toUpperCase()} → ${params.output_format.toUpperCase()}**`, '',
+          `| | |`, `|---|---|`,
+          `| Quelle | ${inputPath} |`,
+          `| Ziel | ${outputPath} |`,
+          `| Größe | ${formatFileSize(outStats.size)} |`
+        ].join('\n') }]
+      };
+    } catch (error) {
+      return { isError: true, content: [{ type: "text", text: `❌ Fehler: ${error instanceof Error ? error.message : String(error)}` }] };
+    }
+  }
+);
+
+// ============================================================================
+// Tool: Detect Duplicates
+// ============================================================================
+
+server.registerTool(
+  "fc_detect_duplicates",
+  {
+    title: "Duplikate erkennen",
+    description: `Findet Datei-Duplikate in einem Verzeichnis anhand von SHA-256 Hashes.
+
+Args:
+  - directory (string): Verzeichnis zum Scannen
+  - recursive (boolean): Rekursiv suchen
+  - extensions (string, optional): Nur bestimmte Erweiterungen
+  - min_size (number, optional): Mindestgröße in Bytes (default: 1)
+  - max_size (number, optional): Maximale Größe in Bytes
+
+Returns:
+  - Gruppen von Duplikaten mit Pfaden und Größen`,
+    inputSchema: {
+      directory: z.string().min(1).describe("Verzeichnis"),
+      recursive: z.boolean().default(true).describe("Rekursiv"),
+      extensions: z.string().optional().describe("Erweiterungen filtern"),
+      min_size: z.number().int().min(0).default(1).describe("Mindestgröße in Bytes"),
+      max_size: z.number().int().optional().describe("Maximale Größe in Bytes")
+    },
+    annotations: {
+      readOnlyHint: true,
+      destructiveHint: false,
+      idempotentHint: true,
+      openWorldHint: false
+    }
+  },
+  async (params) => {
+    try {
+      const dirPath = normalizePath(params.directory);
+      if (!await pathExists(dirPath)) {
+        return { isError: true, content: [{ type: "text", text: `❌ Verzeichnis nicht gefunden: ${dirPath}` }] };
+      }
+
+      const extFilter = params.extensions ? params.extensions.split(',').map(e => e.trim().toLowerCase()) : null;
+
+      // Collect files with sizes
+      const files: { path: string; size: number }[] = [];
+      async function collectFiles(dir: string): Promise<void> {
+        try {
+          const entries = await fs.readdir(dir, { withFileTypes: true });
+          for (const entry of entries) {
+            const full = path.join(dir, entry.name);
+            if (entry.isDirectory() && params.recursive) {
+              if (!['node_modules', '.git', '$RECYCLE.BIN'].includes(entry.name)) {
+                await collectFiles(full);
+              }
+            } else if (entry.isFile()) {
+              if (!extFilter || extFilter.includes(path.extname(entry.name).toLowerCase())) {
+                const stats = await fs.stat(full);
+                if (stats.size >= params.min_size && (!params.max_size || stats.size <= params.max_size)) {
+                  files.push({ path: full, size: stats.size });
+                }
+              }
+            }
+          }
+        } catch { /* skip inaccessible */ }
+      }
+      await collectFiles(dirPath);
+
+      // Group by size first (quick filter)
+      const sizeGroups: Map<number, string[]> = new Map();
+      for (const f of files) {
+        const group = sizeGroups.get(f.size) || [];
+        group.push(f.path);
+        sizeGroups.set(f.size, group);
+      }
+
+      // Hash only files with matching sizes
+      const hashGroups: Map<string, { paths: string[]; size: number }> = new Map();
+      let hashedCount = 0;
+
+      for (const [size, paths] of sizeGroups) {
+        if (paths.length < 2) continue;
+
+        for (const filePath of paths) {
+          try {
+            const content = await fs.readFile(filePath);
+            const hash = crypto.createHash('sha256').update(content).digest('hex');
+            hashedCount++;
+
+            const group = hashGroups.get(hash) || { paths: [], size };
+            group.paths.push(filePath);
+            hashGroups.set(hash, group);
+          } catch { /* skip unreadable */ }
+        }
+      }
+
+      // Filter to actual duplicates
+      const duplicates = [...hashGroups.values()].filter(g => g.paths.length > 1);
+      const totalDuplicateFiles = duplicates.reduce((sum, g) => sum + g.paths.length - 1, 0);
+      const totalWastedSpace = duplicates.reduce((sum, g) => sum + g.size * (g.paths.length - 1), 0);
+
+      if (duplicates.length === 0) {
+        return {
+          content: [{ type: "text", text: `✅ Keine Duplikate gefunden. ${files.length} Dateien geprüft, ${hashedCount} gehasht.` }]
+        };
+      }
+
+      const output = [
+        `🔍 **Duplikate gefunden**`, '',
+        `| | |`, `|---|---|`,
+        `| Geprüfte Dateien | ${files.length} |`,
+        `| Duplikat-Gruppen | ${duplicates.length} |`,
+        `| Duplikate gesamt | ${totalDuplicateFiles} |`,
+        `| Verschwendeter Platz | ${formatFileSize(totalWastedSpace)} |`
+      ];
+
+      for (let i = 0; i < Math.min(duplicates.length, 20); i++) {
+        const group = duplicates[i];
+        output.push('', `**Gruppe ${i + 1}** (${formatFileSize(group.size)}):`);
+        for (const p of group.paths) {
+          output.push(`  📄 ${path.relative(dirPath, p)}`);
+        }
+      }
+
+      if (duplicates.length > 20) {
+        output.push('', `... und ${duplicates.length - 20} weitere Gruppen`);
+      }
+
+      output.push('', `💡 Nutze \`fc_safe_delete\` zum sicheren Entfernen von Duplikaten.`);
+
+      return { content: [{ type: "text", text: output.join('\n') }] };
+    } catch (error) {
+      return { isError: true, content: [{ type: "text", text: `❌ Fehler: ${error instanceof Error ? error.message : String(error)}` }] };
+    }
+  }
+);
+
+// ============================================================================
+// Tool: Markdown to HTML
+// ============================================================================
+
+server.registerTool(
+  "fc_md_to_html",
+  {
+    title: "Markdown zu HTML",
+    description: `Konvertiert Markdown zu formatiertem HTML (druckbar als PDF).
+
+Args:
+  - input_path (string): Pfad zur Markdown-Datei
+  - output_path (string): Pfad zur HTML-Ausgabe
+  - title (string, optional): Dokumenttitel
+
+Erzeugt eigenstaendiges HTML mit CSS-Styling, druckbar als PDF ueber den Browser.`,
+    inputSchema: {
+      input_path: z.string().min(1).describe("Markdown-Datei"),
+      output_path: z.string().min(1).describe("HTML-Ausgabe"),
+      title: z.string().optional().describe("Dokumenttitel")
+    },
+    annotations: {
+      readOnlyHint: false,
+      destructiveHint: false,
+      idempotentHint: true,
+      openWorldHint: false
+    }
+  },
+  async (params) => {
+    try {
+      const inputPath = normalizePath(params.input_path);
+      const outputPath = normalizePath(params.output_path);
+      if (!await pathExists(inputPath)) {
+        return { isError: true, content: [{ type: "text", text: `❌ Datei nicht gefunden: ${inputPath}` }] };
+      }
+
+      const md = await fs.readFile(inputPath, "utf-8");
+      const title = params.title || path.basename(inputPath, '.md');
+
+      let html = md
+        .replace(/^######\s+(.+)$/gm, '<h6>$1</h6>')
+        .replace(/^#####\s+(.+)$/gm, '<h5>$1</h5>')
+        .replace(/^####\s+(.+)$/gm, '<h4>$1</h4>')
+        .replace(/^###\s+(.+)$/gm, '<h3>$1</h3>')
+        .replace(/^##\s+(.+)$/gm, '<h2>$1</h2>')
+        .replace(/^#\s+(.+)$/gm, '<h1>$1</h1>')
+        .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+        .replace(/\*(.+?)\*/g, '<em>$1</em>')
+        .replace(/```(\w*)\n([\s\S]*?)```/g, '<pre><code class="language-$1">$2</code></pre>')
+        .replace(/`([^`]+)`/g, '<code>$1</code>')
+        .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2">$1</a>')
+        .replace(/^---$/gm, '<hr>')
+        .replace(/^[-*]\s+(.+)$/gm, '<li>$1</li>')
+        .replace(/(<li>.*<\/li>\n?)+/g, '<ul>$&</ul>')
+        .replace(/^\|(.+)\|$/gm, (match) => {
+          const cells = match.split('|').filter(c => c.trim()).map(c => c.trim());
+          if (cells.every(c => /^[-:]+$/.test(c))) return '';
+          return '<tr>' + cells.map(c => `<td>${c}</td>`).join('') + '</tr>';
+        })
+        .replace(/(<tr>.*<\/tr>\n?)+/g, '<table>$&</table>')
+        .replace(/^(?!<[hupolt]|<\/|$)(.+)$/gm, '<p>$1</p>');
+
+      const fullHtml = `<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <title>${title}</title>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; max-width: 800px; margin: 40px auto; padding: 0 20px; line-height: 1.6; color: #333; }
+    h1, h2, h3 { border-bottom: 1px solid #eee; padding-bottom: 0.3em; }
+    code { background: #f4f4f4; padding: 2px 6px; border-radius: 3px; font-size: 0.9em; }
+    pre { background: #f4f4f4; padding: 16px; border-radius: 6px; overflow-x: auto; }
+    pre code { background: none; padding: 0; }
+    table { border-collapse: collapse; width: 100%; margin: 1em 0; }
+    td, th { border: 1px solid #ddd; padding: 8px 12px; text-align: left; }
+    tr:nth-child(even) { background: #f9f9f9; }
+    hr { border: none; border-top: 2px solid #eee; margin: 2em 0; }
+    @media print { body { max-width: none; margin: 0; } }
+  </style>
+</head>
+<body>
+${html}
+</body>
+</html>`;
+
+      const outDir = path.dirname(outputPath);
+      if (!await pathExists(outDir)) await fs.mkdir(outDir, { recursive: true });
+      await fs.writeFile(outputPath, fullHtml, "utf-8");
+      const outStats = await fs.stat(outputPath);
+
+      return {
+        content: [{ type: "text", text: [
+          `✅ **Markdown → HTML: ${path.basename(outputPath)}**`, '',
+          `| | |`, `|---|---|`,
+          `| Quelle | ${inputPath} |`,
+          `| Ziel | ${outputPath} |`,
+          `| Größe | ${formatFileSize(outStats.size)} |`, '',
+          `💡 Öffne die HTML-Datei im Browser und drucke als PDF.`
+        ].join('\n') }]
+      };
+    } catch (error) {
+      return { isError: true, content: [{ type: "text", text: `❌ Fehler: ${error instanceof Error ? error.message : String(error)}` }] };
     }
   }
 );

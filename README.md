@@ -6,7 +6,7 @@
 
 A comprehensive **Model Context Protocol (MCP) server** that gives AI assistants full filesystem access, process management, interactive shell sessions, and async file search capabilities.
 
-**29 tools** in a single server - everything an AI agent needs to interact with the local system.
+**38 tools** in a single server - everything an AI agent needs to interact with the local system.
 
 ---
 
@@ -139,13 +139,32 @@ The server communicates via **stdio transport**. Point your MCP client to the `d
 | `fc_list_sessions` | List all sessions |
 | `fc_close_session` | Terminate a session |
 
+### File Maintenance & Repair (8 tools) - NEW in v1.4.0
+
+| Tool | Description |
+|------|-------------|
+| `fc_fix_json` | Repair broken JSON (BOM, trailing commas, comments, single quotes) |
+| `fc_validate_json` | Validate JSON with detailed error position and context |
+| `fc_cleanup_file` | Remove BOM, NUL bytes, trailing whitespace, normalize line endings |
+| `fc_fix_encoding` | Fix Mojibake / double-encoded UTF-8 (27+ character patterns) |
+| `fc_folder_diff` | Track directory changes with snapshots (new/modified/deleted) |
+| `fc_batch_rename` | Pattern-based batch renaming (prefix/suffix, replace, auto-detect) |
+| `fc_convert_format` | Convert between JSON, CSV, and INI formats |
+| `fc_detect_duplicates` | Find duplicate files using SHA-256 hashing |
+
 ### System (1 tool)
 
 | Tool | Description |
 |------|-------------|
 | `fc_get_time` | Get current system time with timezone info |
 
-**Total: 29 tools**
+### Export (1 tool) - NEW in v1.4.0
+
+| Tool | Description |
+|------|-------------|
+| `fc_md_to_html` | Convert Markdown to styled HTML (printable as PDF) |
+
+**Total: 38 tools**
 
 ---
 
@@ -161,16 +180,24 @@ The server communicates via **stdio transport**. Point your MCP client to the `d
 | Shell command execution | Yes | Yes | No |
 | String replace with validation | Yes | Yes | No |
 | Line-based file editing | Yes | No | No |
+| JSON repair & validation | 2 tools | No | No |
+| Encoding fix (Mojibake) | Yes | No | No |
+| Duplicate detection (SHA-256) | Yes | No | No |
+| Folder diff / change tracking | Yes | No | No |
+| Batch rename (pattern-based) | Yes | No | No |
+| Format conversion (JSON/CSV/INI) | Yes | No | No |
 | Path allowlist / sandboxing | No | No | Yes |
 | Excel / PDF support | No | Yes | No |
 | HTTP transport | No | No | No |
-| **Total tools** | **29** | ~15 | ~11 |
+| Markdown to HTML export | Yes | No | No |
+| **Total tools** | **38** | ~15 | ~11 |
 | **Servers needed** | **1** | 1 | + extra for processes |
 
 **Key differentiators:**
 - Only MCP server with **recoverable delete** (Recycle Bin / Trash)
 - Only MCP server with **async background search** with pagination
-- Most comprehensive single-server solution (29 tools)
+- Built-in **JSON repair**, **encoding fix**, and **duplicate detection**
+- Most comprehensive single-server solution (38 tools)
 
 ---
 

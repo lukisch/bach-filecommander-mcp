@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.4.0] - 2026-02-14
+
+### Added
+- `fc_fix_json` - Repair common JSON errors (BOM, trailing commas, single quotes, comments, NUL bytes)
+- `fc_validate_json` - Validate JSON with detailed error position and context
+- `fc_cleanup_file` - Clean files: remove BOM, NUL bytes, trailing whitespace, normalize line endings
+- `fc_fix_encoding` - Fix Mojibake and double-encoded UTF-8 (27+ patterns for German, French, Spanish)
+- `fc_folder_diff` - Track directory changes (new/modified/deleted files) with snapshots
+- `fc_batch_rename` - Pattern-based batch renaming (prefix/suffix removal, replace, auto-detect)
+- `fc_convert_format` - Convert between JSON, CSV, and INI formats
+- `fc_detect_duplicates` - Find duplicate files using SHA-256 hashing with size pre-filter
+- `fc_md_to_html` - Convert Markdown to styled HTML (printable as PDF via browser)
+- Total tools: 38
+
 ## [1.3.0] - 2026-02-14
 
 ### Changed
