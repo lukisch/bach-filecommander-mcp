@@ -32,7 +32,7 @@ const execAsync = promisify(exec);
 
 const server = new McpServer({
   name: "bach-filecommander-mcp",
-  version: "1.4.0"
+  version: "1.4.1"
 });
 
 // ============================================================================
@@ -3465,28 +3465,133 @@ Erzeugt eigenstaendiges HTML mit CSS-Styling, druckbar als PDF ueber den Browser
       const md = await fs.readFile(inputPath, "utf-8");
       const title = params.title || path.basename(inputPath, '.md');
 
-      let html = md
-        .replace(/^######\s+(.+)$/gm, '<h6>$1</h6>')
-        .replace(/^#####\s+(.+)$/gm, '<h5>$1</h5>')
-        .replace(/^####\s+(.+)$/gm, '<h4>$1</h4>')
-        .replace(/^###\s+(.+)$/gm, '<h3>$1</h3>')
-        .replace(/^##\s+(.+)$/gm, '<h2>$1</h2>')
-        .replace(/^#\s+(.+)$/gm, '<h1>$1</h1>')
-        .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-        .replace(/\*(.+?)\*/g, '<em>$1</em>')
-        .replace(/```(\w*)\n([\s\S]*?)```/g, '<pre><code class="language-$1">$2</code></pre>')
-        .replace(/`([^`]+)`/g, '<code>$1</code>')
-        .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2">$1</a>')
-        .replace(/^---$/gm, '<hr>')
-        .replace(/^[-*]\s+(.+)$/gm, '<li>$1</li>')
-        .replace(/(<li>.*<\/li>\n?)+/g, '<ul>$&</ul>')
-        .replace(/^\|(.+)\|$/gm, (match) => {
-          const cells = match.split('|').filter(c => c.trim()).map(c => c.trim());
-          if (cells.every(c => /^[-:]+$/.test(c))) return '';
-          return '<tr>' + cells.map(c => `<td>${c}</td>`).join('') + '</tr>';
-        })
-        .replace(/(<tr>.*<\/tr>\n?)+/g, '<table>$&</table>')
-        .replace(/^(?!<[hupolt]|<\/|$)(.+)$/gm, '<p>$1</p>');
+      // --- Inline formatting ---
+      const inlineFmt = (text: string): string => {
+        text = text.replace(/`([^`]+)`/g, '<code>$1</code>');
+        text = text.replace(/\*\*\*(.+?)\*\*\*/g, '<strong><em>$1</em></strong>');
+        text = text.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+        text = text.replace(/(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)/g, '<em>$1</em>');
+        text = text.replace(/\[!\[([^\]]*)\]\(([^)]+)\)\]\(([^)]+)\)/g, '<a href="$3"><img src="$2" alt="$1"></a>');
+        text = text.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img src="$2" alt="$1">');
+        text = text.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2">$1</a>');
+        text = text.replace(/\[x\]/gi, '&#9745;');
+        text = text.replace(/\[ \]/g, '&#9744;');
+        return text;
+      };
+
+      // --- Table parser ---
+      const parseTable = (tableLines: string[]): string => {
+        if (tableLines.length < 2) return `<p>${inlineFmt(tableLines[0])}</p>`;
+        const rows = tableLines.map(tl => tl.replace(/^\||\|$/g, '').split('|').map(c => c.trim()));
+        let out = '<table>\n<thead>\n<tr>';
+        for (const cell of rows[0]) out += `<th>${inlineFmt(cell)}</th>`;
+        out += '</tr>\n</thead>\n<tbody>\n';
+        for (let r = 2; r < rows.length; r++) {
+          out += '<tr>';
+          for (const cell of rows[r]) out += `<td>${inlineFmt(cell)}</td>`;
+          out += '</tr>\n';
+        }
+        out += '</tbody>\n</table>';
+        return out;
+      };
+
+      // --- List parser (nested, ordered + unordered) ---
+      const parseList = (allLines: string[], start: number): [string, number] => {
+        const result: string[] = [];
+        const stack: string[] = [];
+        let li = start;
+        while (li < allLines.length) {
+          const lline = allLines[li].trimEnd();
+          const lm = lline.match(/^(\s*)([-*]|\d+\.)\s+(.+)$/);
+          if (!lm) break;
+          const indent = lm[1].length;
+          const marker = lm[2];
+          const content = inlineFmt(lm[3]);
+          const tag = /^\d/.test(marker) ? 'ol' : 'ul';
+          const depth = Math.floor(indent / 2);
+          while (stack.length > depth + 1) result.push(`</${stack.pop()}>`);
+          while (stack.length <= depth) { result.push(`<${tag}>`); stack.push(tag); }
+          result.push(`<li>${content}</li>`);
+          li++;
+        }
+        while (stack.length > 0) result.push(`</${stack.pop()}>`);
+        return [result.join('\n'), li];
+      };
+
+      // --- Line-by-line parser ---
+      const lines = md.split('\n');
+      const parts: string[] = [];
+      let i = 0;
+      const n = lines.length;
+
+      while (i < n) {
+        const line = lines[i].trimEnd();
+
+        // Fenced code block
+        if (line.trimStart().startsWith('```')) {
+          const lang = line.trim().slice(3).trim();
+          const codeLines: string[] = [];
+          i++;
+          while (i < n && !lines[i].trimEnd().trimStart().startsWith('```')) {
+            codeLines.push(lines[i].trimEnd().replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'));
+            i++;
+          }
+          i++;
+          parts.push(`<pre><code class="language-${lang}">${codeLines.join('\n')}</code></pre>`);
+          continue;
+        }
+
+        // Table
+        if (line.includes('|') && line.trim().startsWith('|') && line.trim().endsWith('|')) {
+          const tableLines: string[] = [];
+          while (i < n && lines[i].includes('|') && lines[i].trim().startsWith('|')) {
+            tableLines.push(lines[i].trim());
+            i++;
+          }
+          parts.push(parseTable(tableLines));
+          continue;
+        }
+
+        // Blockquote
+        if (line.startsWith('>')) {
+          const bqLines: string[] = [];
+          while (i < n && lines[i].trimEnd().startsWith('>')) {
+            bqLines.push(inlineFmt(lines[i].trimEnd().replace(/^>\s*/, '')));
+            i++;
+          }
+          parts.push(`<blockquote><p>${bqLines.join('<br>')}</p></blockquote>`);
+          continue;
+        }
+
+        // Empty line
+        if (line.trim() === '') { i++; continue; }
+
+        // Horizontal rule
+        if (/^(-{3,}|={3,}|\*{3,})$/.test(line.trim())) { parts.push('<hr>'); i++; continue; }
+
+        // Header
+        const hm = line.match(/^(#{1,6})\s+(.+)$/);
+        if (hm) {
+          const lvl = hm[1].length;
+          parts.push(`<h${lvl}>${inlineFmt(hm[2])}</h${lvl}>`);
+          i++;
+          continue;
+        }
+
+        // List (ordered or unordered)
+        if (/^(\s*)([-*]|\d+\.)\s+/.test(line)) {
+          const [listHtml, nextI] = parseList(lines, i);
+          parts.push(listHtml);
+          i = nextI;
+          continue;
+        }
+
+        // Normal paragraph
+        parts.push(`<p>${inlineFmt(line)}</p>`);
+        i++;
+      }
+
+      const html = parts.join('\n');
 
       const fullHtml = `<!DOCTYPE html>
 <html lang="de">
@@ -3494,16 +3599,28 @@ Erzeugt eigenstaendiges HTML mit CSS-Styling, druckbar als PDF ueber den Browser
   <meta charset="UTF-8">
   <title>${title}</title>
   <style>
-    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; max-width: 800px; margin: 40px auto; padding: 0 20px; line-height: 1.6; color: #333; }
-    h1, h2, h3 { border-bottom: 1px solid #eee; padding-bottom: 0.3em; }
-    code { background: #f4f4f4; padding: 2px 6px; border-radius: 3px; font-size: 0.9em; }
-    pre { background: #f4f4f4; padding: 16px; border-radius: 6px; overflow-x: auto; }
-    pre code { background: none; padding: 0; }
-    table { border-collapse: collapse; width: 100%; margin: 1em 0; }
-    td, th { border: 1px solid #ddd; padding: 8px 12px; text-align: left; }
-    tr:nth-child(even) { background: #f9f9f9; }
-    hr { border: none; border-top: 2px solid #eee; margin: 2em 0; }
-    @media print { body { max-width: none; margin: 0; } }
+    body { font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, sans-serif; max-width: 800px; margin: 40px auto; padding: 0 20px; line-height: 1.7; color: #2c3e50; font-size: 11pt; }
+    h1 { color: #1a252f; border-bottom: 3px solid #3498db; padding-bottom: 12px; font-size: 22pt; }
+    h2 { color: #2c3e50; border-bottom: 1px solid #bdc3c7; padding-bottom: 6px; margin-top: 28px; font-size: 16pt; }
+    h3 { color: #34495e; margin-top: 22px; font-size: 13pt; }
+    h4 { color: #7f8c8d; margin-top: 18px; font-size: 11pt; font-style: italic; }
+    p { margin: 8px 0; }
+    code { background: #f0f3f5; padding: 2px 6px; border-radius: 4px; font-family: 'Cascadia Code', Consolas, 'Courier New', monospace; font-size: 0.9em; color: #c0392b; }
+    pre { background: #1e1e2e; color: #cdd6f4; padding: 16px 20px; border-radius: 8px; overflow-x: auto; font-size: 9.5pt; line-height: 1.5; margin: 14px 0; }
+    pre code { background: none; color: inherit; padding: 0; font-size: inherit; }
+    blockquote { border-left: 4px solid #3498db; margin: 16px 0; padding: 10px 20px; background: #f8f9fa; color: #555; border-radius: 0 6px 6px 0; }
+    blockquote p { margin: 4px 0; }
+    table { border-collapse: collapse; width: 100%; margin: 16px 0; font-size: 10pt; }
+    th { background: #2c3e50; color: white; padding: 10px 14px; text-align: left; font-weight: 600; }
+    td { border: 1px solid #ddd; padding: 8px 14px; }
+    tr:nth-child(even) { background: #f8f9fa; }
+    ul, ol { margin: 6px 0; padding-left: 24px; }
+    li { margin: 4px 0; }
+    hr { border: none; border-top: 1px solid #e0e0e0; margin: 24px 0; }
+    a { color: #2980b9; text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    img { max-width: 100%; }
+    @media print { body { max-width: none; margin: 0; } @page { margin: 2cm 2.5cm; size: A4; } }
   </style>
 </head>
 <body>

@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.4.1] - 2026-02-14
+
+### Fixed
+- `fc_md_to_html` completely rewritten: line-by-line parser instead of regex chain
+- Added: nested lists, ordered lists, blockquotes, checkboxes, badge images, standalone images
+- Added: bold+italic combo (`***text***`), proper `<thead>/<tbody>` tables
+- Professional CSS: dark code blocks, colored headers, print-ready layout
+
 ## [1.4.0] - 2026-02-14
 
 ### Added
