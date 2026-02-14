@@ -19,6 +19,7 @@ Most filesystem MCP servers only cover basic read/write operations. FileCommande
 - **Async Search** - Search large directory trees in the background while the AI continues working
 - **Process Management** - List, start, and terminate system processes
 - **String Replace** - Edit files by matching unique strings with context validation
+- **Markdown Export** - Convert Markdown to professional HTML/PDF with code blocks, tables, nested lists, blockquotes
 - **Cross-platform** - Works on Windows, macOS, and Linux with platform-specific optimizations
 
 ---
@@ -162,7 +163,7 @@ The server communicates via **stdio transport**. Point your MCP client to the `d
 
 | Tool | Description |
 |------|-------------|
-| `fc_md_to_html` | Convert Markdown to styled HTML (printable as PDF) |
+| `fc_md_to_html` | Markdown to HTML: headers, code blocks, tables, nested lists, blockquotes, images, checkboxes |
 
 **Total: 38 tools**
 
