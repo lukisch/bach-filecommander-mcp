@@ -1,14 +1,14 @@
 #!/usr/bin/env node
 /**
- * recludOS FileCommander MCP Server
+ * BACH FileCommander MCP Server
  *
  * A comprehensive MCP server for filesystem access, process management,
  * interactive sessions, and async file search.
  *
- * Copyright (c) 2025-2026 Lukas (recludOS). Licensed under MIT License.
+ * Copyright (c) 2025-2026 Lukas (BACH). Licensed under MIT License.
  * See LICENSE file for details.
  *
- * @author Lukas (recludOS)
+ * @author Lukas (BACH)
  * @version 1.3.0
  * @license MIT
  */
@@ -29,7 +29,7 @@ const execAsync = promisify(exec);
 // ============================================================================
 
 const server = new McpServer({
-  name: "recludos-filecommander-mcp",
+  name: "bach-filecommander-mcp",
   version: "1.3.0"
 });
 
@@ -2406,7 +2406,7 @@ Args:
 async function main(): Promise<void> {
   const transport = new StdioServerTransport();
   await server.connect(transport);
-  console.error("🚀 recludOS FileCommander MCP Server gestartet");
+  console.error("🚀 BACH FileCommander MCP Server gestartet");
 }
 
 main().catch((error) => {

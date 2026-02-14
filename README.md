@@ -1,7 +1,7 @@
-# recludOS FileCommander MCP Server
+# BACH FileCommander MCP Server
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![npm version](https://img.shields.io/npm/v/recludos-filecommander-mcp.svg)](https://www.npmjs.com/package/recludos-filecommander-mcp)
+[![npm version](https://img.shields.io/npm/v/bach-filecommander-mcp.svg)](https://www.npmjs.com/package/bach-filecommander-mcp)
 [![Node.js](https://img.shields.io/badge/node-%3E%3D18-brightgreen.svg)](https://nodejs.org/)
 
 A comprehensive **Model Context Protocol (MCP) server** that gives AI assistants full filesystem access, process management, interactive shell sessions, and async file search capabilities.
@@ -33,14 +33,14 @@ Most filesystem MCP servers only cover basic read/write operations. FileCommande
 ### Option 1: Install from NPM
 
 ```bash
-npm install -g recludos-filecommander-mcp
+npm install -g bach-filecommander-mcp
 ```
 
 ### Option 2: Install from Source
 
 ```bash
-git clone https://github.com/lukisch/recludos-filecommander-mcp.git
-cd recludos-filecommander-mcp
+git clone https://github.com/lukisch/bach-filecommander-mcp.git
+cd bach-filecommander-mcp
 npm install
 npm run build
 ```
@@ -62,7 +62,7 @@ Add to your `claude_desktop_config.json`:
 {
   "mcpServers": {
     "filecommander": {
-      "command": "recludos-filecommander"
+      "command": "bach-filecommander"
     }
   }
 }
@@ -85,7 +85,7 @@ Restart Claude Desktop after saving.
 
 ### Other MCP Clients
 
-The server communicates via **stdio transport**. Point your MCP client to the `dist/index.js` entry point or the `recludos-filecommander` binary.
+The server communicates via **stdio transport**. Point your MCP client to the `dist/index.js` entry point or the `bach-filecommander` binary.
 
 ---
 
@@ -222,4 +222,4 @@ See [CHANGELOG.md](CHANGELOG.md) for the full version history.
 
 ## License
 
-[MIT](LICENSE) - Lukas (recludOS)
+[MIT](LICENSE) - Lukas (BACH)

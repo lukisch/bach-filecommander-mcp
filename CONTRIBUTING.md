@@ -1,4 +1,4 @@
-# Contributing to recludOS FileCommander MCP
+# Contributing to BACH FileCommander MCP
 
 Thank you for your interest in contributing!
 
