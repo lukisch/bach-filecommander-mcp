@@ -1,0 +1,24 @@
+# Source (compiled output in dist/ is included)
+src/
+
+# Development files
+_Spielwiese/
+build.py.wip
+BUILD_SKILL.md
+COMPLETE_PROJECT_CONTEXT.txt
+Ideen.md
+TODO.md
+.claude/
+
+# IDE & OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Config
+tsconfig.json
+.gitignore
+
+# Logs
+*.log

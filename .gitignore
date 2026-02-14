@@ -1,0 +1,31 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+
+# IDE & Tools
+.vscode/
+.idea/
+.claude/
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Environment
+.env
+.env.local
+
+# Logs
+*.log
+npm-debug.log*
+
+# Internal development files
+_Spielwiese/
+build.py.wip
+BUILD_SKILL.md
+COMPLETE_PROJECT_CONTEXT.txt
+Ideen.md
+TODO.md
