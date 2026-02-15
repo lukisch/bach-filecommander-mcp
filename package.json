@@ -1,6 +1,6 @@
 {
   "name": "bach-filecommander-mcp",
-  "version": "1.4.1",
+  "version": "1.5.0",
   "description": "A comprehensive MCP server providing 38 tools for filesystem operations, process management, interactive sessions, async file search, JSON repair, encoding fix, duplicate detection, and Markdown export",
   "type": "module",
   "main": "dist/index.js",

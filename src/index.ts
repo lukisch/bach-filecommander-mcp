@@ -16,6 +16,8 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
+import { t, setLanguage, getLanguage } from './i18n/index.js';
+import type { Lang } from './i18n/index.js';
 import * as fs from "fs/promises";
 import * as fsSync from "fs";
 import * as path from "path";
@@ -32,7 +34,7 @@ const execAsync = promisify(exec);
 
 const server = new McpServer({
   name: "bach-filecommander-mcp",
-  version: "1.4.1"
+  version: "1.5.0"
 });
 
 // ============================================================================
@@ -335,25 +337,25 @@ async function searchFilesRecursive(
 server.registerTool(
   "fc_read_file",
   {
-    title: "Datei lesen",
-    description: `Liest den Inhalt einer Datei.
+    title: "Read File",
+    description: `Reads the content of a file.
 
 Args:
-  - path (string): Vollständiger Pfad zur Datei
-  - encoding (string, optional): Zeichenkodierung (default: utf-8)
-  - max_lines (number, optional): Maximale Anzahl Zeilen (0 = alle)
+  - path (string): Full path to the file
+  - encoding (string, optional): Character encoding (default: utf-8)
+  - max_lines (number, optional): Maximum number of lines (0 = all)
 
 Returns:
-  - Dateiinhalt als Text
-  - Bei Binärdateien: Base64-kodierter Inhalt
+  - File content as text
+  - For binary files: Base64-encoded content
 
-Beispiele:
+Examples:
   - path: "C:\\Users\\User\\test.txt"
   - path: "/home/user/config.json"`,
     inputSchema: {
-      path: z.string().min(1).describe("Vollständiger Pfad zur Datei"),
-      encoding: z.string().default("utf-8").describe("Zeichenkodierung"),
-      max_lines: z.number().int().min(0).default(0).describe("Max Zeilen (0 = alle)")
+      path: z.string().min(1).describe("Full path to the file"),
+      encoding: z.string().default("utf-8").describe("Character encoding"),
+      max_lines: z.number().int().min(0).default(0).describe("Max lines (0 = all)")
     },
     annotations: {
       readOnlyHint: true,
@@ -369,39 +371,39 @@ Beispiele:
       if (!await pathExists(filePath)) {
         return {
           isError: true,
-          content: [{ type: "text", text: `❌ Datei nicht gefunden: ${filePath}` }]
+          content: [{ type: "text", text: t().common.fileNotFound(filePath) }]
         };
       }
-      
+
       const stats = await fs.stat(filePath);
       if (stats.isDirectory()) {
         return {
           isError: true,
-          content: [{ type: "text", text: `❌ Pfad ist ein Verzeichnis: ${filePath}. Nutze fc_list_directory.` }]
+          content: [{ type: "text", text: t().common.pathIsDirectoryUseListDir(filePath) }]
         };
       }
-      
+
       let content = await fs.readFile(filePath, params.encoding as BufferEncoding);
-      
+
       if (params.max_lines > 0) {
         const lines = content.split('\n');
         content = lines.slice(0, params.max_lines).join('\n');
         if (lines.length > params.max_lines) {
-          content += `\n\n... (${lines.length - params.max_lines} weitere Zeilen)`;
+          content += t().fc_read_file.moreLines(lines.length - params.max_lines);
         }
       }
-      
+
       return {
-        content: [{ 
-          type: "text", 
-          text: `📄 **${path.basename(filePath)}** (${formatFileSize(stats.size)})\n\n${content}` 
+        content: [{
+          type: "text",
+          text: `${t().fc_read_file.fileHeader(path.basename(filePath), formatFileSize(stats.size))}\n\n${content}`
         }]
       };
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : String(error);
       return {
         isError: true,
-        content: [{ type: "text", text: `❌ Fehler beim Lesen: ${errorMsg}` }]
+        content: [{ type: "text", text: t().fc_read_file.readError(errorMsg) }]
       };
     }
   }
@@ -414,24 +416,24 @@ Beispiele:
 server.registerTool(
   "fc_write_file",
   {
-    title: "Datei schreiben",
-    description: `Schreibt Inhalt in eine Datei. Erstellt die Datei falls nicht vorhanden.
+    title: "Write File",
+    description: `Writes content to a file. Creates the file if it does not exist.
 
 Args:
-  - path (string): Vollständiger Pfad zur Datei
-  - content (string): Zu schreibender Inhalt
-  - append (boolean, optional): An Datei anhängen statt überschreiben
-  - create_dirs (boolean, optional): Fehlende Verzeichnisse erstellen
+  - path (string): Full path to the file
+  - content (string): Content to write
+  - append (boolean, optional): Append to file instead of overwriting
+  - create_dirs (boolean, optional): Create missing directories
 
 Returns:
-  - Bestätigung mit Dateigröße
+  - Confirmation with file size
 
-⚠️ ACHTUNG: Überschreibt existierende Dateien ohne Warnung wenn append=false!`,
+Warning: Overwrites existing files without warning when append=false!`,
     inputSchema: {
-      path: z.string().min(1).describe("Vollständiger Pfad zur Datei"),
-      content: z.string().describe("Zu schreibender Inhalt"),
-      append: z.boolean().default(false).describe("An Datei anhängen"),
-      create_dirs: z.boolean().default(true).describe("Fehlende Verzeichnisse erstellen")
+      path: z.string().min(1).describe("Full path to the file"),
+      content: z.string().describe("Content to write"),
+      append: z.boolean().default(false).describe("Append to file"),
+      create_dirs: z.boolean().default(true).describe("Create missing directories")
     },
     annotations: {
       readOnlyHint: false,
@@ -456,19 +458,19 @@ Returns:
       }
       
       const stats = await fs.stat(filePath);
-      const action = params.append ? "erweitert" : "geschrieben";
-      
+      const action = params.append ? t().fc_write_file.actionAppended : t().fc_write_file.actionWritten;
+
       return {
-        content: [{ 
-          type: "text", 
-          text: `✅ Datei ${action}: ${filePath}\n📊 Größe: ${formatFileSize(stats.size)}` 
+        content: [{
+          type: "text",
+          text: `${t().fc_write_file.success(action, filePath)}\n${t().fc_write_file.sizeLabel(formatFileSize(stats.size))}`
         }]
       };
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : String(error);
       return {
         isError: true,
-        content: [{ type: "text", text: `❌ Fehler beim Schreiben: ${errorMsg}` }]
+        content: [{ type: "text", text: t().fc_write_file.writeError(errorMsg) }]
       };
     }
   }
@@ -481,20 +483,20 @@ Returns:
 server.registerTool(
   "fc_list_directory",
   {
-    title: "Verzeichnis auflisten",
-    description: `Listet Dateien und Unterverzeichnisse auf.
+    title: "List Directory",
+    description: `Lists files and subdirectories.
 
 Args:
-  - path (string): Pfad zum Verzeichnis
-  - depth (number, optional): Maximale Tiefe für rekursive Auflistung (default: 1)
-  - show_hidden (boolean, optional): Versteckte Dateien anzeigen
+  - path (string): Path to the directory
+  - depth (number, optional): Maximum depth for recursive listing (default: 1)
+  - show_hidden (boolean, optional): Show hidden files
 
 Returns:
-  - Formatierte Liste aller Einträge mit Icons (📁/📄)`,
+  - Formatted list of all entries with icons`,
     inputSchema: {
-      path: z.string().min(1).describe("Pfad zum Verzeichnis"),
-      depth: z.number().int().min(0).max(10).default(1).describe("Rekursionstiefe"),
-      show_hidden: z.boolean().default(false).describe("Versteckte Dateien anzeigen")
+      path: z.string().min(1).describe("Path to the directory"),
+      depth: z.number().int().min(0).max(10).default(1).describe("Recursion depth"),
+      show_hidden: z.boolean().default(false).describe("Show hidden files")
     },
     annotations: {
       readOnlyHint: true,
@@ -510,36 +512,36 @@ Returns:
       if (!await pathExists(dirPath)) {
         return {
           isError: true,
-          content: [{ type: "text", text: `❌ Verzeichnis nicht gefunden: ${dirPath}` }]
+          content: [{ type: "text", text: t().common.dirNotFound(dirPath) }]
         };
       }
-      
+
       const stats = await fs.stat(dirPath);
       if (!stats.isDirectory()) {
         return {
           isError: true,
-          content: [{ type: "text", text: `❌ Pfad ist keine Verzeichnis: ${dirPath}. Nutze fc_read_file.` }]
+          content: [{ type: "text", text: t().common.pathIsNotDirUseReadFile(dirPath) }]
         };
       }
-      
+
       const entries = await listDirectoryRecursive(dirPath, params.depth);
-      
+
       // Filter hidden files if needed
-      const filteredEntries = params.show_hidden 
-        ? entries 
-        : entries.filter(e => !e.trim().startsWith('📁 .') && !e.trim().startsWith('📄 .'));
-      
+      const filteredEntries = params.show_hidden
+        ? entries
+        : entries.filter(e => !e.trim().startsWith('\uD83D\uDCC1 .') && !e.trim().startsWith('\uD83D\uDCC4 .'));
+
       return {
-        content: [{ 
-          type: "text", 
-          text: `📂 **${dirPath}**\n\n${filteredEntries.join('\n') || '(Verzeichnis ist leer)'}` 
+        content: [{
+          type: "text",
+          text: `${t().fc_list_directory.dirHeader(dirPath)}\n\n${filteredEntries.join('\n') || t().fc_list_directory.emptyDir}`
         }]
       };
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : String(error);
       return {
         isError: true,
-        content: [{ type: "text", text: `❌ Fehler beim Auflisten: ${errorMsg}` }]
+        content: [{ type: "text", text: t().fc_list_directory.listError(errorMsg) }]
       };
     }
   }
@@ -552,16 +554,16 @@ Returns:
 server.registerTool(
   "fc_create_directory",
   {
-    title: "Verzeichnis erstellen",
-    description: `Erstellt ein neues Verzeichnis (inkl. Elternverzeichnisse).
+    title: "Create Directory",
+    description: `Creates a new directory (including parent directories).
 
 Args:
-  - path (string): Pfad zum neuen Verzeichnis
+  - path (string): Path to the new directory
 
 Returns:
-  - Bestätigung der Erstellung`,
+  - Confirmation of creation`,
     inputSchema: {
-      path: z.string().min(1).describe("Pfad zum neuen Verzeichnis")
+      path: z.string().min(1).describe("Path to the new directory")
     },
     annotations: {
       readOnlyHint: false,
@@ -576,20 +578,20 @@ Returns:
       
       if (await pathExists(dirPath)) {
         return {
-          content: [{ type: "text", text: `ℹ️ Verzeichnis existiert bereits: ${dirPath}` }]
+          content: [{ type: "text", text: t().fc_create_directory.alreadyExists(dirPath) }]
         };
       }
-      
+
       await fs.mkdir(dirPath, { recursive: true });
-      
+
       return {
-        content: [{ type: "text", text: `✅ Verzeichnis erstellt: ${dirPath}` }]
+        content: [{ type: "text", text: t().fc_create_directory.created(dirPath) }]
       };
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : String(error);
       return {
         isError: true,
-        content: [{ type: "text", text: `❌ Fehler beim Erstellen: ${errorMsg}` }]
+        content: [{ type: "text", text: t().fc_create_directory.createError(errorMsg) }]
       };
     }
   }
@@ -602,15 +604,15 @@ Returns:
 server.registerTool(
   "fc_delete_file",
   {
-    title: "Datei löschen",
-    description: `Löscht eine Datei.
+    title: "Delete File",
+    description: `Deletes a file.
 
 Args:
-  - path (string): Pfad zur Datei
+  - path (string): Path to the file
 
-⚠️ ACHTUNG: Unwiderruflich! Keine Papierkorb-Funktion.`,
+Warning: Irreversible! No recycle bin.`,
     inputSchema: {
-      path: z.string().min(1).describe("Pfad zur Datei")
+      path: z.string().min(1).describe("Path to the file")
     },
     annotations: {
       readOnlyHint: false,
@@ -626,28 +628,28 @@ Args:
       if (!await pathExists(filePath)) {
         return {
           isError: true,
-          content: [{ type: "text", text: `❌ Datei nicht gefunden: ${filePath}` }]
+          content: [{ type: "text", text: t().common.fileNotFound(filePath) }]
         };
       }
-      
+
       const stats = await fs.stat(filePath);
       if (stats.isDirectory()) {
         return {
           isError: true,
-          content: [{ type: "text", text: `❌ Pfad ist ein Verzeichnis. Nutze fc_delete_directory.` }]
+          content: [{ type: "text", text: t().common.pathIsDirectoryUseDeleteDir }]
         };
       }
-      
+
       await fs.unlink(filePath);
-      
+
       return {
-        content: [{ type: "text", text: `✅ Datei gelöscht: ${filePath}` }]
+        content: [{ type: "text", text: t().fc_delete_file.deleted(filePath) }]
       };
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : String(error);
       return {
         isError: true,
-        content: [{ type: "text", text: `❌ Fehler beim Löschen: ${errorMsg}` }]
+        content: [{ type: "text", text: t().fc_delete_file.deleteError(errorMsg) }]
       };
     }
   }
@@ -660,17 +662,17 @@ Args:
 server.registerTool(
   "fc_delete_directory",
   {
-    title: "Verzeichnis löschen",
-    description: `Löscht ein Verzeichnis.
+    title: "Delete Directory",
+    description: `Deletes a directory.
 
 Args:
-  - path (string): Pfad zum Verzeichnis
-  - recursive (boolean): Auch nicht-leere Verzeichnisse löschen
+  - path (string): Path to the directory
+  - recursive (boolean): Delete non-empty directories too
 
-⚠️ ACHTUNG: Mit recursive=true werden ALLE Inhalte unwiderruflich gelöscht!`,
+Warning: With recursive=true ALL contents are irreversibly deleted!`,
     inputSchema: {
-      path: z.string().min(1).describe("Pfad zum Verzeichnis"),
-      recursive: z.boolean().default(false).describe("Rekursiv löschen")
+      path: z.string().min(1).describe("Path to the directory"),
+      recursive: z.boolean().default(false).describe("Delete recursively")
     },
     annotations: {
       readOnlyHint: false,
@@ -686,34 +688,34 @@ Args:
       if (!await pathExists(dirPath)) {
         return {
           isError: true,
-          content: [{ type: "text", text: `❌ Verzeichnis nicht gefunden: ${dirPath}` }]
+          content: [{ type: "text", text: t().common.dirNotFound(dirPath) }]
         };
       }
-      
+
       const stats = await fs.stat(dirPath);
       if (!stats.isDirectory()) {
         return {
           isError: true,
-          content: [{ type: "text", text: `❌ Pfad ist keine Verzeichnis. Nutze fc_delete_file.` }]
+          content: [{ type: "text", text: t().common.pathIsNotDirectory(dirPath) }]
         };
       }
-      
+
       await fs.rm(dirPath, { recursive: params.recursive });
-      
+
       return {
-        content: [{ type: "text", text: `✅ Verzeichnis gelöscht: ${dirPath}` }]
+        content: [{ type: "text", text: t().fc_delete_directory.deleted(dirPath) }]
       };
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : String(error);
       if (errorMsg.includes('ENOTEMPTY')) {
         return {
           isError: true,
-          content: [{ type: "text", text: `❌ Verzeichnis nicht leer. Setze recursive=true zum Löschen aller Inhalte.` }]
+          content: [{ type: "text", text: t().fc_delete_directory.notEmpty }]
         };
       }
       return {
         isError: true,
-        content: [{ type: "text", text: `❌ Fehler beim Löschen: ${errorMsg}` }]
+        content: [{ type: "text", text: t().fc_delete_directory.deleteError(errorMsg) }]
       };
     }
   }
@@ -726,19 +728,19 @@ Args:
 server.registerTool(
   "fc_move",
   {
-    title: "Verschieben/Umbenennen",
-    description: `Verschiebt oder benennt eine Datei/Verzeichnis um.
+    title: "Move/Rename",
+    description: `Moves or renames a file/directory.
 
 Args:
-  - source (string): Quellpfad
-  - destination (string): Zielpfad
+  - source (string): Source path
+  - destination (string): Destination path
 
-Beispiele:
-  - Umbenennen: source="test.txt", destination="test_neu.txt"
-  - Verschieben: source="C:\\a\\test.txt", destination="C:\\b\\test.txt"`,
+Examples:
+  - Rename: source="test.txt", destination="test_new.txt"
+  - Move: source="C:\\a\\test.txt", destination="C:\\b\\test.txt"`,
     inputSchema: {
-      source: z.string().min(1).describe("Quellpfad"),
-      destination: z.string().min(1).describe("Zielpfad")
+      source: z.string().min(1).describe("Source path"),
+      destination: z.string().min(1).describe("Destination path")
     },
     annotations: {
       readOnlyHint: false,
@@ -755,26 +757,26 @@ Beispiele:
       if (!await pathExists(sourcePath)) {
         return {
           isError: true,
-          content: [{ type: "text", text: `❌ Quelle nicht gefunden: ${sourcePath}` }]
+          content: [{ type: "text", text: t().common.sourceNotFound(sourcePath) }]
         };
       }
-      
+
       // Create destination directory if needed
       const destDir = path.dirname(destPath);
       if (!await pathExists(destDir)) {
         await fs.mkdir(destDir, { recursive: true });
       }
-      
+
       await fs.rename(sourcePath, destPath);
-      
+
       return {
-        content: [{ type: "text", text: `✅ Verschoben:\n  📤 ${sourcePath}\n  📥 ${destPath}` }]
+        content: [{ type: "text", text: t().fc_move.moved(sourcePath, destPath) }]
       };
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : String(error);
       return {
         isError: true,
-        content: [{ type: "text", text: `❌ Fehler beim Verschieben: ${errorMsg}` }]
+        content: [{ type: "text", text: t().fc_move.moveError(errorMsg) }]
       };
     }
   }
@@ -787,17 +789,17 @@ Beispiele:
 server.registerTool(
   "fc_copy",
   {
-    title: "Kopieren",
-    description: `Kopiert eine Datei oder ein Verzeichnis.
+    title: "Copy",
+    description: `Copies a file or directory.
 
 Args:
-  - source (string): Quellpfad
-  - destination (string): Zielpfad
-  - recursive (boolean): Verzeichnisse rekursiv kopieren`,
+  - source (string): Source path
+  - destination (string): Destination path
+  - recursive (boolean): Copy directories recursively`,
     inputSchema: {
-      source: z.string().min(1).describe("Quellpfad"),
-      destination: z.string().min(1).describe("Zielpfad"),
-      recursive: z.boolean().default(true).describe("Rekursiv kopieren")
+      source: z.string().min(1).describe("Source path"),
+      destination: z.string().min(1).describe("Destination path"),
+      recursive: z.boolean().default(true).describe("Copy recursively")
     },
     annotations: {
       readOnlyHint: false,
@@ -814,32 +816,32 @@ Args:
       if (!await pathExists(sourcePath)) {
         return {
           isError: true,
-          content: [{ type: "text", text: `❌ Quelle nicht gefunden: ${sourcePath}` }]
+          content: [{ type: "text", text: t().common.sourceNotFound(sourcePath) }]
         };
       }
-      
+
       // Create destination directory if needed
       const destDir = path.dirname(destPath);
       if (!await pathExists(destDir)) {
         await fs.mkdir(destDir, { recursive: true });
       }
-      
+
       const stats = await fs.stat(sourcePath);
-      
+
       if (stats.isDirectory()) {
         await fs.cp(sourcePath, destPath, { recursive: params.recursive });
       } else {
         await fs.copyFile(sourcePath, destPath);
       }
-      
+
       return {
-        content: [{ type: "text", text: `✅ Kopiert:\n  📤 ${sourcePath}\n  📥 ${destPath}` }]
+        content: [{ type: "text", text: t().fc_copy.copied(sourcePath, destPath) }]
       };
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : String(error);
       return {
         isError: true,
-        content: [{ type: "text", text: `❌ Fehler beim Kopieren: ${errorMsg}` }]
+        content: [{ type: "text", text: t().fc_copy.copyError(errorMsg) }]
       };
     }
   }
@@ -852,16 +854,16 @@ Args:
 server.registerTool(
   "fc_file_info",
   {
-    title: "Datei-Informationen",
-    description: `Zeigt detaillierte Informationen zu einer Datei/Verzeichnis.
+    title: "File Information",
+    description: `Shows detailed information about a file/directory.
 
 Args:
-  - path (string): Pfad zur Datei/Verzeichnis
+  - path (string): Path to the file/directory
 
 Returns:
-  - Größe, Typ, Erstellungs-/Änderungsdatum, Berechtigungen`,
+  - Size, type, creation/modification date, permissions`,
     inputSchema: {
-      path: z.string().min(1).describe("Pfad zur Datei/Verzeichnis")
+      path: z.string().min(1).describe("Path to the file/directory")
     },
     annotations: {
       readOnlyHint: true,
@@ -877,26 +879,26 @@ Returns:
       if (!await pathExists(targetPath)) {
         return {
           isError: true,
-          content: [{ type: "text", text: `❌ Pfad nicht gefunden: ${targetPath}` }]
+          content: [{ type: "text", text: t().common.pathNotFound(targetPath) }]
         };
       }
-      
+
       const stats = await fs.stat(targetPath);
-      const type = stats.isDirectory() ? "Verzeichnis" : stats.isFile() ? "Datei" : "Sonstiges";
-      
+      const fileType = stats.isDirectory() ? t().fc_file_info.typeDirectory : stats.isFile() ? t().fc_file_info.typeFile : t().fc_file_info.typeOther;
+      const locale = getLanguage() === 'de' ? 'de-DE' : 'en-US';
+
       const info = [
-        `📋 **Informationen: ${path.basename(targetPath)}**`,
+        t().fc_file_info.header(path.basename(targetPath)),
         ``,
-        `| Eigenschaft | Wert |`,
+        `| ${t().fc_file_info.propType} | ${fileType} |`,
         `|-------------|------|`,
-        `| Typ | ${type} |`,
-        `| Größe | ${formatFileSize(stats.size)} |`,
-        `| Erstellt | ${stats.birthtime.toLocaleString('de-DE')} |`,
-        `| Geändert | ${stats.mtime.toLocaleString('de-DE')} |`,
-        `| Zugegriffen | ${stats.atime.toLocaleString('de-DE')} |`,
-        `| Pfad | ${targetPath} |`
+        `| ${t().fc_file_info.propSize} | ${formatFileSize(stats.size)} |`,
+        `| ${t().fc_file_info.propCreated} | ${stats.birthtime.toLocaleString(locale)} |`,
+        `| ${t().fc_file_info.propModified} | ${stats.mtime.toLocaleString(locale)} |`,
+        `| ${t().fc_file_info.propAccessed} | ${stats.atime.toLocaleString(locale)} |`,
+        `| ${t().fc_file_info.propPath} | ${targetPath} |`
       ];
-      
+
       return {
         content: [{ type: "text", text: info.join('\n') }]
       };
@@ -904,7 +906,7 @@ Returns:
       const errorMsg = error instanceof Error ? error.message : String(error);
       return {
         isError: true,
-        content: [{ type: "text", text: `❌ Fehler: ${errorMsg}` }]
+        content: [{ type: "text", text: t().common.errorGeneric(errorMsg) }]
       };
     }
   }
@@ -917,22 +919,22 @@ Returns:
 server.registerTool(
   "fc_search_files",
   {
-    title: "Dateien suchen",
-    description: `Sucht Dateien nach Name/Muster in einem Verzeichnis.
+    title: "Search Files",
+    description: `Searches files by name/pattern in a directory.
 
 Args:
-  - directory (string): Startverzeichnis für die Suche
-  - pattern (string): Suchmuster (unterstützt * und ? Wildcards)
-  - max_results (number, optional): Maximale Ergebnisse (default: 50)
+  - directory (string): Start directory for the search
+  - pattern (string): Search pattern (supports * and ? wildcards)
+  - max_results (number, optional): Maximum results (default: 50)
 
-Beispiele:
-  - pattern: "*.txt" - Alle Textdateien
-  - pattern: "test*" - Dateien die mit "test" beginnen
-  - pattern: "*.py" - Alle Python-Dateien`,
+Examples:
+  - pattern: "*.txt" - All text files
+  - pattern: "test*" - Files starting with "test"
+  - pattern: "*.py" - All Python files`,
     inputSchema: {
-      directory: z.string().min(1).describe("Startverzeichnis"),
-      pattern: z.string().min(1).describe("Suchmuster mit Wildcards"),
-      max_results: z.number().int().min(1).max(500).default(50).describe("Max Ergebnisse")
+      directory: z.string().min(1).describe("Start directory"),
+      pattern: z.string().min(1).describe("Search pattern with wildcards"),
+      max_results: z.number().int().min(1).max(500).default(50).describe("Max results")
     },
     annotations: {
       readOnlyHint: true,
@@ -948,33 +950,33 @@ Beispiele:
       if (!await pathExists(dirPath)) {
         return {
           isError: true,
-          content: [{ type: "text", text: `❌ Verzeichnis nicht gefunden: ${dirPath}` }]
+          content: [{ type: "text", text: t().common.dirNotFound(dirPath) }]
         };
       }
-      
+
       // Convert wildcard pattern to regex
       const regexPattern = params.pattern
         .replace(/[.+^${}()|[\]\\]/g, '\\$&')
         .replace(/\*/g, '.*')
         .replace(/\?/g, '.');
       const regex = new RegExp(`^${regexPattern}$`, 'i');
-      
+
       const results = await searchFilesRecursive(dirPath, regex, params.max_results);
-      
+
       if (results.length === 0) {
         return {
-          content: [{ type: "text", text: `🔍 Keine Dateien gefunden für: "${params.pattern}"` }]
+          content: [{ type: "text", text: t().fc_search_files.noResults(params.pattern) }]
         };
       }
-      
+
       const output = [
-        `🔍 **Suchergebnisse für "${params.pattern}"**`,
-        `📁 In: ${dirPath}`,
-        `📊 Gefunden: ${results.length} ${results.length >= params.max_results ? `(Maximum erreicht)` : ''}`,
+        t().fc_search_files.resultsHeader(params.pattern),
+        t().fc_search_files.inDir(dirPath),
+        `${t().fc_search_files.found(results.length)} ${results.length >= params.max_results ? t().fc_search_files.maxReached : ''}`,
         ``,
-        ...results.map(r => `  📄 ${r}`)
+        ...results.map(r => `  \uD83D\uDCC4 ${r}`)
       ];
-      
+
       return {
         content: [{ type: "text", text: output.join('\n') }]
       };
@@ -982,7 +984,7 @@ Beispiele:
       const errorMsg = error instanceof Error ? error.message : String(error);
       return {
         isError: true,
-        content: [{ type: "text", text: `❌ Fehler bei Suche: ${errorMsg}` }]
+        content: [{ type: "text", text: t().fc_search_files.searchError(errorMsg) }]
       };
     }
   }
@@ -995,22 +997,22 @@ Beispiele:
 server.registerTool(
   "fc_start_search",
   {
-    title: "Asynchrone Suche starten",
-    description: `Startet eine Suche im Hintergrund. Claude kann währenddessen andere Aufgaben erledigen.
+    title: "Start Async Search",
+    description: `Starts a background search. Claude can perform other tasks in the meantime.
 
 Args:
-  - directory (string): Startverzeichnis
-  - pattern (string): Suchmuster (Wildcards: * und ?)
+  - directory (string): Start directory
+  - pattern (string): Search pattern (wildcards: * and ?)
 
 Returns:
-  - Search-ID für fc_get_search_results, fc_stop_search
+  - Search ID for fc_get_search_results, fc_stop_search
 
-Beispiel:
-  Suche starten: fc_start_search("C:\\Users", "*.pdf")
-  Später Ergebnisse holen: fc_get_search_results(search_id)`,
+Example:
+  Start search: fc_start_search("C:\\Users", "*.pdf")
+  Get results later: fc_get_search_results(search_id)`,
     inputSchema: {
-      directory: z.string().min(1).describe("Startverzeichnis"),
-      pattern: z.string().min(1).describe("Suchmuster mit Wildcards")
+      directory: z.string().min(1).describe("Start directory"),
+      pattern: z.string().min(1).describe("Search pattern with wildcards")
     },
     annotations: {
       readOnlyHint: true,
@@ -1026,7 +1028,7 @@ Beispiel:
       if (!await pathExists(dirPath)) {
         return {
           isError: true,
-          content: [{ type: "text", text: `❌ Verzeichnis nicht gefunden: ${dirPath}` }]
+          content: [{ type: "text", text: t().common.dirNotFound(dirPath) }]
         };
       }
 
@@ -1062,16 +1064,16 @@ Beispiel:
       });
 
       return {
-        content: [{ 
-          type: "text", 
-          text: `🔍 **Suche gestartet**\n\n| | |\n|---|---|\n| Search-ID | \`${searchId}\` |\n| Verzeichnis | ${dirPath} |\n| Muster | ${params.pattern} |\n\nNutze \`fc_get_search_results\` um Ergebnisse abzurufen.`
+        content: [{
+          type: "text",
+          text: `${t().fc_start_search.started(searchId, dirPath, params.pattern)}\n\n${t().fc_start_search.useGetResults}`
         }]
       };
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : String(error);
       return {
         isError: true,
-        content: [{ type: "text", text: `❌ Fehler beim Starten der Suche: ${errorMsg}` }]
+        content: [{ type: "text", text: t().fc_start_search.startError(errorMsg) }]
       };
     }
   }
@@ -1084,20 +1086,20 @@ Beispiel:
 server.registerTool(
   "fc_get_search_results",
   {
-    title: "Suchergebnisse abrufen",
-    description: `Ruft Ergebnisse einer laufenden oder beendeten Suche ab.
+    title: "Get Search Results",
+    description: `Retrieves results of a running or completed search.
 
 Args:
-  - search_id (string): Search-ID von fc_start_search
-  - offset (number, optional): Ab welchem Ergebnis (für Paginierung)
-  - limit (number, optional): Maximale Anzahl Ergebnisse (default: 50)
+  - search_id (string): Search ID from fc_start_search
+  - offset (number, optional): Start offset for pagination
+  - limit (number, optional): Maximum number of results (default: 50)
 
 Returns:
-  - Status der Suche und gefundene Dateien`,
+  - Search status and found files`,
     inputSchema: {
-      search_id: z.string().min(1).describe("Search-ID"),
-      offset: z.number().int().min(0).default(0).describe("Start-Offset"),
-      limit: z.number().int().min(1).max(200).default(50).describe("Max Ergebnisse")
+      search_id: z.string().min(1).describe("Search ID"),
+      offset: z.number().int().min(0).default(0).describe("Start offset"),
+      limit: z.number().int().min(1).max(200).default(50).describe("Max results")
     },
     annotations: {
       readOnlyHint: true,
@@ -1112,34 +1114,34 @@ Returns:
     if (!session) {
       return {
         isError: true,
-        content: [{ type: "text", text: `❌ Suche nicht gefunden: ${params.search_id}\n\nNutze fc_list_searches für aktive Suchen.` }]
+        content: [{ type: "text", text: `${t().fc_get_search_results.notFound(params.search_id)}\n\n${t().fc_get_search_results.useListSearches}` }]
       };
     }
 
-    const status = session.isRunning ? '🔄 Läuft' : '✅ Abgeschlossen';
+    const status = session.isRunning ? t().fc_get_search_results.statusRunning : t().fc_get_search_results.statusDone;
     const runtime = Math.round((Date.now() - session.startTime.getTime()) / 1000);
     const totalResults = session.results.length;
     const paginatedResults = session.results.slice(params.offset, params.offset + params.limit);
     const hasMore = totalResults > params.offset + params.limit;
 
     const output = [
-      `🔍 **Suchergebnisse** (${status})`,
+      t().fc_get_search_results.header(status),
       ``,
       `| | |`,
       `|---|---|`,
-      `| Muster | ${session.patternString} |`,
-      `| Verzeichnis | ${session.directory} |`,
-      `| Gescannte Ordner | ${session.scannedDirs} |`,
-      `| Gefunden | ${totalResults} Dateien |`,
-      `| Laufzeit | ${runtime}s |`,
+      `| ${t().fc_get_search_results.labelPattern} | ${session.patternString} |`,
+      `| ${t().fc_get_search_results.labelDirectory} | ${session.directory} |`,
+      `| ${t().fc_get_search_results.labelScannedDirs} | ${session.scannedDirs} |`,
+      `| ${t().fc_get_search_results.labelFound(totalResults)} | |`,
+      `| ${t().fc_get_search_results.labelRuntime(runtime)} | |`,
       ``,
-      `**Ergebnisse ${params.offset + 1}-${Math.min(params.offset + params.limit, totalResults)} von ${totalResults}:**`,
+      t().fc_get_search_results.resultsRange(params.offset + 1, Math.min(params.offset + params.limit, totalResults), totalResults),
       ``,
-      ...paginatedResults.map(r => `  📄 ${r}`)
+      ...paginatedResults.map(r => `  \uD83D\uDCC4 ${r}`)
     ];
 
     if (hasMore) {
-      output.push(``, `📌 Weitere Ergebnisse: \`fc_get_search_results("${params.search_id}", offset=${params.offset + params.limit})\``);
+      output.push(``, t().fc_get_search_results.moreResults(params.search_id, params.offset + params.limit));
     }
 
     return {
@@ -1155,13 +1157,13 @@ Returns:
 server.registerTool(
   "fc_stop_search",
   {
-    title: "Suche stoppen",
-    description: `Stoppt eine laufende Hintergrund-Suche.
+    title: "Stop Search",
+    description: `Stops a running background search.
 
 Args:
-  - search_id (string): Search-ID`,
+  - search_id (string): Search ID`,
     inputSchema: {
-      search_id: z.string().min(1).describe("Search-ID")
+      search_id: z.string().min(1).describe("Search ID")
     },
     annotations: {
       readOnlyHint: false,
@@ -1176,13 +1178,13 @@ Args:
     if (!session) {
       return {
         isError: true,
-        content: [{ type: "text", text: `❌ Suche nicht gefunden: ${params.search_id}` }]
+        content: [{ type: "text", text: t().fc_stop_search.notFound(params.search_id) }]
       };
     }
 
     if (!session.isRunning) {
       return {
-        content: [{ type: "text", text: `ℹ️ Suche bereits beendet. ${session.results.length} Ergebnisse gefunden.` }]
+        content: [{ type: "text", text: t().fc_stop_search.alreadyDone(session.results.length) }]
       };
     }
 
@@ -1190,7 +1192,7 @@ Args:
     session.abortController.abort();
 
     return {
-      content: [{ type: "text", text: `⏹️ Suche gestoppt: ${params.search_id}\n📊 ${session.results.length} Ergebnisse bis hierhin gefunden.` }]
+      content: [{ type: "text", text: `${t().fc_stop_search.stopped(params.search_id)}\n${t().fc_stop_search.resultsSoFar(session.results.length)}` }]
     };
   }
 );
@@ -1202,8 +1204,8 @@ Args:
 server.registerTool(
   "fc_list_searches",
   {
-    title: "Aktive Suchen auflisten",
-    description: `Listet alle aktiven und beendeten Hintergrund-Suchen auf.`,
+    title: "List Searches",
+    description: `Lists all active and completed background searches.`,
     inputSchema: {},
     annotations: {
       readOnlyHint: true,
@@ -1215,22 +1217,22 @@ server.registerTool(
   async () => {
     if (searchSessions.size === 0) {
       return {
-        content: [{ type: "text", text: `📋 Keine Suchen aktiv.\n\nStarte eine neue mit \`fc_start_search\`.` }]
+        content: [{ type: "text", text: `${t().fc_list_searches.noSearches}\n\n${t().fc_list_searches.useStartSearch}` }]
       };
     }
 
     const rows: string[] = [];
-    
+
     for (const [id, session] of searchSessions) {
-      const status = session.isRunning ? '🔄' : '✅';
+      const status = session.isRunning ? '\uD83D\uDD04' : '\u2705';
       const runtime = Math.round((Date.now() - session.startTime.getTime()) / 1000);
       rows.push(`| ${status} | \`${id}\` | ${session.patternString} | ${session.results.length} | ${runtime}s |`);
     }
 
     const output = [
-      `📋 **Suchen** (${searchSessions.size})`,
+      t().fc_list_searches.header(searchSessions.size),
       ``,
-      `| Status | Search-ID | Muster | Ergebnisse | Laufzeit |`,
+      `| ${t().fc_list_searches.colStatus} | ${t().fc_list_searches.colSearchId} | ${t().fc_list_searches.colPattern} | ${t().fc_list_searches.colResults} | ${t().fc_list_searches.colRuntime} |`,
       `|--------|-----------|--------|------------|----------|`,
       ...rows
     ];
@@ -1248,13 +1250,13 @@ server.registerTool(
 server.registerTool(
   "fc_clear_search",
   {
-    title: "Suche entfernen",
-    description: `Entfernt eine beendete Suche aus der Liste und gibt Speicher frei.
+    title: "Clear Search",
+    description: `Removes a completed search from the list and frees memory.
 
 Args:
-  - search_id (string): Search-ID (oder "all" für alle beendeten)`,
+  - search_id (string): Search ID (or "all" for all completed)`,
     inputSchema: {
-      search_id: z.string().min(1).describe("Search-ID oder 'all'")
+      search_id: z.string().min(1).describe("Search ID or 'all'")
     },
     annotations: {
       readOnlyHint: false,
@@ -1273,7 +1275,7 @@ Args:
         }
       }
       return {
-        content: [{ type: "text", text: `🧹 ${count} beendete Suchen entfernt.` }]
+        content: [{ type: "text", text: t().fc_clear_search.cleared(count) }]
       };
     }
 
@@ -1282,21 +1284,21 @@ Args:
     if (!session) {
       return {
         isError: true,
-        content: [{ type: "text", text: `❌ Suche nicht gefunden: ${params.search_id}` }]
+        content: [{ type: "text", text: t().fc_clear_search.notFound(params.search_id) }]
       };
     }
 
     if (session.isRunning) {
       return {
         isError: true,
-        content: [{ type: "text", text: `⚠️ Suche läuft noch. Nutze erst fc_stop_search.` }]
+        content: [{ type: "text", text: t().fc_clear_search.stillRunning }]
       };
     }
 
     searchSessions.delete(params.search_id);
 
     return {
-      content: [{ type: "text", text: `✅ Suche entfernt: ${params.search_id}` }]
+      content: [{ type: "text", text: t().fc_clear_search.removed(params.search_id) }]
     };
   }
 );
@@ -1308,17 +1310,17 @@ Args:
 server.registerTool(
   "fc_safe_delete",
   {
-    title: "Sicher löschen (Papierkorb)",
-    description: `Verschiebt Dateien/Verzeichnisse in den Papierkorb statt sie zu löschen.
+    title: "Safe Delete (Recycle Bin)",
+    description: `Moves files/directories to recycle bin instead of deleting them.
 
 Args:
-  - path (string): Pfad zur Datei/Verzeichnis
+  - path (string): Path to the file/directory
 
-✅ SICHER: Kann aus dem Papierkorb wiederhergestellt werden!
+SAFE: Can be restored from the recycle bin!
 
-Hinweis: Nutzt Windows-Papierkorb oder erstellt Backup auf anderen Systemen.`,
+Note: Uses Windows recycle bin or creates backup on other systems.`,
     inputSchema: {
-      path: z.string().min(1).describe("Pfad zur Datei/Verzeichnis")
+      path: z.string().min(1).describe("Path to the file/directory")
     },
     annotations: {
       readOnlyHint: false,
@@ -1334,12 +1336,12 @@ Hinweis: Nutzt Windows-Papierkorb oder erstellt Backup auf anderen Systemen.`,
       if (!await pathExists(targetPath)) {
         return {
           isError: true,
-          content: [{ type: "text", text: `❌ Pfad nicht gefunden: ${targetPath}` }]
+          content: [{ type: "text", text: t().common.pathNotFound(targetPath) }]
         };
       }
 
       const stats = await fs.stat(targetPath);
-      const itemType = stats.isDirectory() ? "Verzeichnis" : "Datei";
+      const itemType = stats.isDirectory() ? t().fc_safe_delete.typeDirectory : t().fc_safe_delete.typeFile;
       const isWindows = process.platform === 'win32';
         // Windows: PowerShell mit VisualBasic für echten Papierkorb
       if (isWindows) {
@@ -1361,9 +1363,9 @@ Hinweis: Nutzt Windows-Papierkorb oder erstellt Backup auf anderen Systemen.`,
           }
         }
         return {
-          content: [{ 
-            type: "text", 
-            text: `🗑️ **In Papierkorb verschoben**\n\n| | |\n|---|---|\n| Typ | ${itemType} |\n| Pfad | ${targetPath} |\n\n✅ Kann aus dem Papierkorb wiederhergestellt werden.`
+          content: [{
+            type: "text",
+            text: `${t().fc_safe_delete.movedToTrash}\n\n| | |\n|---|---|\n| ${t().fc_safe_delete.propType} | ${itemType} |\n| ${t().fc_safe_delete.propPath} | ${targetPath} |\n\n${t().fc_safe_delete.canRestore}`
           }]
         };
       } else {
@@ -1382,9 +1384,9 @@ Hinweis: Nutzt Windows-Papierkorb oder erstellt Backup auf anderen Systemen.`,
         await fs.rename(targetPath, trashPath);
 
         return {
-          content: [{ 
-            type: "text", 
-            text: `🗑️ **In Papierkorb verschoben**\n\n| | |\n|---|---|\n| Typ | ${itemType} |\n| Original | ${targetPath} |\n| Papierkorb | ${trashPath} |\n\n✅ Kann wiederhergestellt werden.`
+          content: [{
+            type: "text",
+            text: `${t().fc_safe_delete.movedToTrash}\n\n| | |\n|---|---|\n| ${t().fc_safe_delete.propType} | ${itemType} |\n| ${t().fc_safe_delete.propOriginal} | ${targetPath} |\n| ${t().fc_safe_delete.propTrash} | ${trashPath} |\n\n${t().fc_safe_delete.canRestore}`
           }]
         };
       }
@@ -1392,7 +1394,7 @@ Hinweis: Nutzt Windows-Papierkorb oder erstellt Backup auf anderen Systemen.`,
       const errorMsg = error instanceof Error ? error.message : String(error);
       return {
         isError: true,
-        content: [{ type: "text", text: `❌ Fehler beim Verschieben in Papierkorb: ${errorMsg}` }]
+        content: [{ type: "text", text: t().fc_safe_delete.trashError(errorMsg) }]
       };
     }
   }
@@ -1405,23 +1407,23 @@ Hinweis: Nutzt Windows-Papierkorb oder erstellt Backup auf anderen Systemen.`,
 server.registerTool(
   "fc_execute_command",
   {
-    title: "Befehl ausführen",
-    description: `Führt einen Shell-Befehl aus und gibt die Ausgabe zurück.
+    title: "Execute Command",
+    description: `Executes a shell command and returns the output.
 
 Args:
-  - command (string): Auszuführender Befehl
-  - cwd (string, optional): Arbeitsverzeichnis
-  - timeout (number, optional): Timeout in Millisekunden (default: 30000)
+  - command (string): Command to execute
+  - cwd (string, optional): Working directory
+  - timeout (number, optional): Timeout in milliseconds (default: 30000)
 
-⚠️ ACHTUNG: Befehle werden mit Benutzerrechten ausgeführt!
+Warning: Commands are executed with user privileges!
 
-Beispiele:
+Examples:
   - command: "dir" (Windows)
   - command: "ls -la" (Unix)
   - command: "python --version"`,
     inputSchema: {
-      command: z.string().min(1).describe("Auszuführender Befehl"),
-      cwd: z.string().optional().describe("Arbeitsverzeichnis"),
+      command: z.string().min(1).describe("Command to execute"),
+      cwd: z.string().optional().describe("Working directory"),
       timeout: z.number().int().min(1000).max(300000).default(30000).describe("Timeout in ms")
     },
     annotations: {
@@ -1441,19 +1443,19 @@ Beispiele:
         options.cwd = normalizePath(params.cwd);
       }
       const { stdout, stderr } = await executeCommand(params.command, options);
-      
-      const output: string[] = [`⚡ **Befehl:** \`${params.command}\``];
-      
+
+      const output: string[] = [t().fc_execute_command.commandLabel(params.command)];
+
       if (stdout.trim()) {
-        output.push(`\n**Ausgabe:**\n\`\`\`\n${stdout.trim()}\n\`\`\``);
+        output.push(`\n${t().fc_execute_command.outputLabel}\n\`\`\`\n${stdout.trim()}\n\`\`\``);
       }
-      
+
       if (stderr.trim()) {
-        output.push(`\n**Fehlerausgabe:**\n\`\`\`\n${stderr.trim()}\n\`\`\``);
+        output.push(`\n${t().fc_execute_command.stderrLabel}\n\`\`\`\n${stderr.trim()}\n\`\`\``);
       }
-      
+
       if (!stdout.trim() && !stderr.trim()) {
-        output.push(`\n✅ Befehl ausgeführt (keine Ausgabe)`);
+        output.push(`\n${t().fc_execute_command.noOutput}`);
       }
       
       return {
@@ -1463,7 +1465,7 @@ Beispiele:
       const errorMsg = error instanceof Error ? error.message : String(error);
       return {
         isError: true,
-        content: [{ type: "text", text: `❌ Fehler bei Befehlsausführung:\n${errorMsg}` }]
+        content: [{ type: "text", text: t().fc_execute_command.execError(errorMsg) }]
       };
     }
   }
@@ -1476,22 +1478,22 @@ Beispiele:
 server.registerTool(
   "fc_start_process",
   {
-    title: "Prozess starten",
-    description: `Startet einen Prozess im Hintergrund (non-blocking).
+    title: "Start Process",
+    description: `Starts a process in the background (non-blocking).
 
 Args:
-  - program (string): Programm/Executable
-  - args (array, optional): Argumente als Array
-  - cwd (string, optional): Arbeitsverzeichnis
+  - program (string): Program/Executable
+  - args (array, optional): Arguments as array
+  - cwd (string, optional): Working directory
 
-Beispiele:
+Examples:
   - program: "notepad.exe", args: ["test.txt"]
   - program: "python", args: ["script.py"]
-  - program: "code", args: ["."] (VS Code öffnen)`,
+  - program: "code", args: ["."] (open VS Code)`,
     inputSchema: {
-      program: z.string().min(1).describe("Programm/Executable"),
-      args: z.array(z.string()).default([]).describe("Argumente"),
-      cwd: z.string().optional().describe("Arbeitsverzeichnis")
+      program: z.string().min(1).describe("Program/Executable"),
+      args: z.array(z.string()).default([]).describe("Arguments"),
+      cwd: z.string().optional().describe("Working directory")
     },
     annotations: {
       readOnlyHint: false,
@@ -1515,18 +1517,18 @@ Beispiele:
       child.unref();
       
       const argsStr = params.args.length > 0 ? ` ${params.args.join(' ')}` : '';
-      
+
       return {
-        content: [{ 
-          type: "text", 
-          text: `🚀 Prozess gestartet: ${params.program}${argsStr}\n📋 PID: ${child.pid}` 
+        content: [{
+          type: "text",
+          text: `${t().fc_start_process.started(params.program, argsStr)}\n${t().fc_start_process.pidLabel(child.pid)}`
         }]
       };
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : String(error);
       return {
         isError: true,
-        content: [{ type: "text", text: `❌ Fehler beim Starten: ${errorMsg}` }]
+        content: [{ type: "text", text: t().fc_start_process.startError(errorMsg) }]
       };
     }
   }
@@ -1539,11 +1541,11 @@ Beispiele:
 server.registerTool(
   "fc_get_time",
   {
-    title: "Aktuelle Zeit",
-    description: `Gibt die aktuelle Systemzeit zurück.
+    title: "Current Time",
+    description: `Returns the current system time.
 
 Returns:
-  - Datum, Uhrzeit, Wochentag, Zeitzone`,
+  - Date, time, weekday, timezone`,
     inputSchema: {},
     annotations: {
       readOnlyHint: true,
@@ -1554,18 +1556,18 @@ Returns:
   },
   async () => {
     const now = new Date();
-    const days = ['Sonntag', 'Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag', 'Samstag'];
-    
+    const locale = getLanguage() === 'de' ? 'de-DE' : 'en-US';
+
     const output = [
-      `🕐 **Aktuelle Systemzeit**`,
+      t().fc_get_time.header,
       ``,
       `| | |`,
       `|---|---|`,
-      `| Datum | ${now.toLocaleDateString('de-DE')} |`,
-      `| Uhrzeit | ${now.toLocaleTimeString('de-DE')} |`,
-      `| Wochentag | ${days[now.getDay()]} |`,
-      `| ISO | ${now.toISOString()} |`,
-      `| Zeitzone | ${Intl.DateTimeFormat().resolvedOptions().timeZone} |`
+      `| ${t().fc_get_time.labelDate} | ${now.toLocaleDateString(locale)} |`,
+      `| ${t().fc_get_time.labelTime} | ${now.toLocaleTimeString(locale)} |`,
+      `| ${t().fc_get_time.labelWeekday} | ${t().common.weekdays[now.getDay()]} |`,
+      `| ${t().fc_get_time.labelISO} | ${now.toISOString()} |`,
+      `| ${t().fc_get_time.labelTimezone} | ${Intl.DateTimeFormat().resolvedOptions().timeZone} |`
     ];
     
     return {
@@ -1581,21 +1583,21 @@ Returns:
 server.registerTool(
   "fc_read_multiple_files",
   {
-    title: "Mehrere Dateien lesen",
-    description: `Liest mehrere Dateien auf einmal und gibt deren Inhalte zurück.
+    title: "Read Multiple Files",
+    description: `Reads multiple files at once and returns their contents.
 
 Args:
-  - paths (array): Array von Dateipfaden
-  - max_lines_per_file (number, optional): Max Zeilen pro Datei (0 = alle)
+  - paths (array): Array of file paths
+  - max_lines_per_file (number, optional): Max lines per file (0 = all)
 
 Returns:
-  - Inhalte aller Dateien mit Trennzeichen
+  - Contents of all files with separators
 
-Beispiel:
+Example:
   paths: ["C:\\config.json", "C:\\readme.md"]`,
     inputSchema: {
-      paths: z.array(z.string().min(1)).min(1).max(20).describe("Array von Dateipfaden"),
-      max_lines_per_file: z.number().int().min(0).default(0).describe("Max Zeilen pro Datei")
+      paths: z.array(z.string().min(1)).min(1).max(20).describe("Array of file paths"),
+      max_lines_per_file: z.number().int().min(0).default(0).describe("Max lines per file")
     },
     annotations: {
       readOnlyHint: true,
@@ -1614,14 +1616,14 @@ Beispiel:
       
       try {
         if (!await pathExists(normalizedPath)) {
-          results.push(`\n❌ **${path.basename(normalizedPath)}** - Nicht gefunden\n`);
+          results.push(`\n\u274C **${path.basename(normalizedPath)}** - ${t().fc_read_multiple_files.notFound}\n`);
           errorCount++;
           continue;
         }
 
         const stats = await fs.stat(normalizedPath);
         if (stats.isDirectory()) {
-          results.push(`\n❌ **${path.basename(normalizedPath)}** - Ist ein Verzeichnis\n`);
+          results.push(`\n\u274C **${path.basename(normalizedPath)}** - ${t().fc_read_multiple_files.isDirectory}\n`);
           errorCount++;
           continue;
         }
@@ -1632,7 +1634,7 @@ Beispiel:
           const lines = content.split('\n');
           content = lines.slice(0, params.max_lines_per_file).join('\n');
           if (lines.length > params.max_lines_per_file) {
-            content += `\n... (${lines.length - params.max_lines_per_file} weitere Zeilen)`;
+            content += `\n${t().fc_read_multiple_files.moreLines(lines.length - params.max_lines_per_file)}`;
           }
         }
 
@@ -1645,7 +1647,7 @@ Beispiel:
       }
     }
 
-    const summary = `📊 **Ergebnis:** ${successCount} gelesen, ${errorCount} Fehler\n${'═'.repeat(60)}`;
+    const summary = `${t().fc_read_multiple_files.summary(successCount, errorCount)}\n${'═'.repeat(60)}`;
     
     return {
       content: [{ type: "text", text: summary + results.join('') }]
@@ -1660,26 +1662,26 @@ Beispiel:
 server.registerTool(
   "fc_edit_file",
   {
-    title: "Datei bearbeiten (Zeilen)",
-    description: `Bearbeitet eine Datei zeilenbasiert: ersetzen, einfügen oder löschen.
+    title: "Edit File (Lines)",
+    description: `Edits a file line-based: replace, insert, or delete.
 
 Args:
-  - path (string): Pfad zur Datei
+  - path (string): Path to the file
   - operation (string): "replace" | "insert" | "delete"
-  - start_line (number): Startzeile (1-basiert)
-  - end_line (number, optional): Endzeile für replace/delete
-  - content (string, optional): Neuer Inhalt für replace/insert
+  - start_line (number): Start line (1-based)
+  - end_line (number, optional): End line for replace/delete
+  - content (string, optional): New content for replace/insert
 
-Beispiele:
-  - Zeilen 5-10 ersetzen: operation="replace", start_line=5, end_line=10, content="neuer text"
-  - Nach Zeile 3 einfügen: operation="insert", start_line=3, content="neue zeile"
-  - Zeilen 7-9 löschen: operation="delete", start_line=7, end_line=9`,
+Examples:
+  - Replace lines 5-10: operation="replace", start_line=5, end_line=10, content="new text"
+  - Insert after line 3: operation="insert", start_line=3, content="new line"
+  - Delete lines 7-9: operation="delete", start_line=7, end_line=9`,
     inputSchema: {
-      path: z.string().min(1).describe("Pfad zur Datei"),
+      path: z.string().min(1).describe("Path to the file"),
       operation: z.enum(["replace", "insert", "delete"]).describe("Operation"),
-      start_line: z.number().int().min(1).describe("Startzeile (1-basiert)"),
-      end_line: z.number().int().min(1).optional().describe("Endzeile"),
-      content: z.string().optional().describe("Neuer Inhalt")
+      start_line: z.number().int().min(1).describe("Start line (1-based)"),
+      end_line: z.number().int().min(1).optional().describe("End line"),
+      content: z.string().optional().describe("New content")
     },
     annotations: {
       readOnlyHint: false,
@@ -1695,7 +1697,7 @@ Beispiele:
       if (!await pathExists(filePath)) {
         return {
           isError: true,
-          content: [{ type: "text", text: `❌ Datei nicht gefunden: ${filePath}` }]
+          content: [{ type: "text", text: t().common.fileNotFound(filePath) }]
         };
       }
 
@@ -1709,14 +1711,14 @@ Beispiele:
       if (startIdx < 0 || startIdx >= totalLines) {
         return {
           isError: true,
-          content: [{ type: "text", text: `❌ Startzeile ${params.start_line} ungültig. Datei hat ${totalLines} Zeilen.` }]
+          content: [{ type: "text", text: t().fc_edit_file.invalidStartLine(params.start_line, totalLines) }]
         };
       }
 
       if (endIdx < startIdx || endIdx >= totalLines) {
         return {
           isError: true,
-          content: [{ type: "text", text: `❌ Endzeile ${params.end_line} ungültig.` }]
+          content: [{ type: "text", text: t().fc_edit_file.invalidEndLine(params.end_line!) }]
         };
       }
 
@@ -1728,7 +1730,7 @@ Beispiele:
           if (!params.content) {
             return {
               isError: true,
-              content: [{ type: "text", text: `❌ 'content' erforderlich für replace-Operation.` }]
+              content: [{ type: "text", text: t().fc_edit_file.contentRequired('replace') }]
             };
           }
           const replacementLines = params.content.split('\n');
@@ -1737,14 +1739,14 @@ Beispiele:
             ...replacementLines,
             ...lines.slice(endIdx + 1)
           ];
-          actionDesc = `Zeilen ${params.start_line}-${endIdx + 1} ersetzt durch ${replacementLines.length} Zeilen`;
+          actionDesc = t().fc_edit_file.replacedLines(params.start_line, endIdx + 1, replacementLines.length);
           break;
 
         case "insert":
           if (!params.content) {
             return {
               isError: true,
-              content: [{ type: "text", text: `❌ 'content' erforderlich für insert-Operation.` }]
+              content: [{ type: "text", text: t().fc_edit_file.contentRequired('insert') }]
             };
           }
           const insertLines = params.content.split('\n');
@@ -1753,7 +1755,7 @@ Beispiele:
             ...insertLines,
             ...lines.slice(startIdx + 1)
           ];
-          actionDesc = `${insertLines.length} Zeilen nach Zeile ${params.start_line} eingefügt`;
+          actionDesc = t().fc_edit_file.insertedLines(insertLines.length, params.start_line);
           break;
 
         case "delete":
@@ -1761,29 +1763,29 @@ Beispiele:
             ...lines.slice(0, startIdx),
             ...lines.slice(endIdx + 1)
           ];
-          actionDesc = `Zeilen ${params.start_line}-${endIdx + 1} gelöscht`;
+          actionDesc = t().fc_edit_file.deletedLines(params.start_line, endIdx + 1);
           break;
 
         default:
           return {
             isError: true,
-            content: [{ type: "text", text: `❌ Unbekannte Operation: ${params.operation}` }]
+            content: [{ type: "text", text: t().fc_edit_file.unknownOperation(params.operation) }]
           };
       }
 
       await fs.writeFile(filePath, newLines.join('\n'), "utf-8");
 
       return {
-        content: [{ 
-          type: "text", 
-          text: `✅ **${path.basename(filePath)}** bearbeitet\n📝 ${actionDesc}\n📊 ${totalLines} → ${newLines.length} Zeilen` 
+        content: [{
+          type: "text",
+          text: `${t().fc_edit_file.edited(path.basename(filePath))}\n\uD83D\uDCDD ${actionDesc}\n${t().fc_edit_file.lineChange(totalLines, newLines.length)}`
         }]
       };
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : String(error);
       return {
         isError: true,
-        content: [{ type: "text", text: `❌ Fehler beim Bearbeiten: ${errorMsg}` }]
+        content: [{ type: "text", text: t().fc_edit_file.editError(errorMsg) }]
       };
     }
   }
@@ -1796,28 +1798,28 @@ Beispiele:
 server.registerTool(
   "fc_str_replace",
   {
-    title: "String in Datei ersetzen",
-    description: `Ersetzt einen eindeutigen String in einer Datei durch einen anderen.
+    title: "String Replace in File",
+    description: `Replaces a unique string in a file with another.
 
 Args:
-  - path (string): Pfad zur Datei
-  - old_str (string): Zu ersetzender String (muss genau 1x vorkommen)
-  - new_str (string): Neuer String (leer = löschen)
+  - path (string): Path to the file
+  - old_str (string): String to replace (must occur exactly once)
+  - new_str (string): New string (empty = delete)
 
 Returns:
-  - Bestätigung mit Kontext
+  - Confirmation with context
 
-⚠️ WICHTIG: old_str muss EXAKT 1x in der Datei vorkommen!
-Bei 0 oder >1 Vorkommen wird ein Fehler ausgegeben.
+IMPORTANT: old_str must occur EXACTLY once in the file!
+An error is returned for 0 or >1 occurrences.
 
-Beispiele:
-  - Funktionsname ändern: old_str="def old_name", new_str="def new_name"
-  - Import hinzufügen: old_str="import os", new_str="import os\\nimport sys"
-  - Zeile löschen: old_str="# TODO: remove this\\n", new_str=""`,
+Examples:
+  - Rename function: old_str="def old_name", new_str="def new_name"
+  - Add import: old_str="import os", new_str="import os\\nimport sys"
+  - Delete line: old_str="# TODO: remove this\\n", new_str=""`,
     inputSchema: {
-      path: z.string().min(1).describe("Pfad zur Datei"),
-      old_str: z.string().min(1).describe("Zu ersetzender String (muss eindeutig sein)"),
-      new_str: z.string().default("").describe("Neuer String (leer = löschen)")
+      path: z.string().min(1).describe("Path to the file"),
+      old_str: z.string().min(1).describe("String to replace (must be unique)"),
+      new_str: z.string().default("").describe("New string (empty = delete)")
     },
     annotations: {
       readOnlyHint: false,
@@ -1833,7 +1835,7 @@ Beispiele:
       if (!await pathExists(filePath)) {
         return {
           isError: true,
-          content: [{ type: "text", text: `❌ Datei nicht gefunden: ${filePath}` }]
+          content: [{ type: "text", text: t().common.fileNotFound(filePath) }]
         };
       }
 
@@ -1841,33 +1843,33 @@ Beispiele:
       if (stats.isDirectory()) {
         return {
           isError: true,
-          content: [{ type: "text", text: `❌ Pfad ist ein Verzeichnis: ${filePath}` }]
+          content: [{ type: "text", text: t().fc_str_replace.pathIsDirectory(filePath) }]
         };
       }
 
       const content = await fs.readFile(filePath, "utf-8");
-      
+
       // Count occurrences
       const occurrences = content.split(params.old_str).length - 1;
-      
+
       if (occurrences === 0) {
         // Show a snippet of the file to help debug
         const preview = content.length > 500 ? content.substring(0, 500) + "..." : content;
         return {
           isError: true,
-          content: [{ 
-            type: "text", 
-            text: `❌ String nicht gefunden in ${path.basename(filePath)}.\n\n**Gesucht:**\n\`\`\`\n${params.old_str}\n\`\`\`\n\n**Datei-Anfang:**\n\`\`\`\n${preview}\n\`\`\``
+          content: [{
+            type: "text",
+            text: `${t().fc_str_replace.notFoundInFile(path.basename(filePath))}\n\n${t().fc_str_replace.searchedFor}\n\`\`\`\n${params.old_str}\n\`\`\`\n\n${t().fc_str_replace.fileStart}\n\`\`\`\n${preview}\n\`\`\``
           }]
         };
       }
-      
+
       if (occurrences > 1) {
         return {
           isError: true,
-          content: [{ 
-            type: "text", 
-            text: `❌ String kommt ${occurrences}x vor (muss eindeutig sein).\n\n**Gesucht:**\n\`\`\`\n${params.old_str}\n\`\`\`\n\n💡 Tipp: Erweitere den Suchstring um mehr Kontext.`
+          content: [{
+            type: "text",
+            text: `${t().fc_str_replace.multipleOccurrences(occurrences)}\n\n${t().fc_str_replace.searchedFor}\n\`\`\`\n${params.old_str}\n\`\`\`\n\n${t().fc_str_replace.tip}`
           }]
         };
       }
@@ -1880,8 +1882,8 @@ Beispiele:
       const oldLines = params.old_str.split('\n').length;
       const newLines = params.new_str.split('\n').length;
       const lineChange = newLines - oldLines;
-      const lineInfo = lineChange === 0 ? "gleiche Zeilenanzahl" : 
-                       lineChange > 0 ? `+${lineChange} Zeilen` : `${lineChange} Zeilen`;
+      const lineInfo = lineChange === 0 ? t().fc_str_replace.sameLineCount :
+                       lineChange > 0 ? t().fc_str_replace.addedLines(lineChange) : t().fc_str_replace.removedLines(lineChange);
 
       // Show context around the change
       const changeIndex = content.indexOf(params.old_str);
@@ -1891,16 +1893,16 @@ Beispiele:
       const afterContext = content.substring(changeIndex + params.old_str.length, contextEnd);
 
       return {
-        content: [{ 
-          type: "text", 
-          text: `✅ **${path.basename(filePath)}** - String ersetzt\n\n| | |\n|---|---|\n| Änderung | ${lineInfo} |\n| Datei | ${filePath} |\n\n**Kontext:**\n\`\`\`\n...${beforeContext}▶${params.new_str}◀${afterContext}...\n\`\`\``
+        content: [{
+          type: "text",
+          text: `${t().fc_str_replace.replaced(path.basename(filePath))}\n\n| | |\n|---|---|\n| ${t().fc_str_replace.labelChange} | ${lineInfo} |\n| ${t().fc_str_replace.labelFile} | ${filePath} |\n\n${t().fc_str_replace.contextLabel}\n\`\`\`\n...${beforeContext}\u25B6${params.new_str}\u25C0${afterContext}...\n\`\`\``
         }]
       };
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : String(error);
       return {
         isError: true,
-        content: [{ type: "text", text: `❌ Fehler beim Ersetzen: ${errorMsg}` }]
+        content: [{ type: "text", text: t().fc_str_replace.replaceError(errorMsg) }]
       };
     }
   }
@@ -1913,18 +1915,18 @@ Beispiele:
 server.registerTool(
   "fc_list_processes",
   {
-    title: "Prozesse auflisten",
-    description: `Listet laufende Systemprozesse auf.
+    title: "List Processes",
+    description: `Lists running system processes.
 
 Args:
-  - filter (string, optional): Filter nach Prozessname
+  - filter (string, optional): Filter by process name
 
 Returns:
-  - Liste der Prozesse mit PID, Name, Speicher
+  - List of processes with PID, name, memory
 
-Hinweis: Nutzt 'tasklist' (Windows) oder 'ps' (Unix)`,
+Note: Uses 'tasklist' (Windows) or 'ps' (Unix)`,
     inputSchema: {
-      filter: z.string().optional().describe("Filter nach Prozessname")
+      filter: z.string().optional().describe("Filter by process name")
     },
     annotations: {
       readOnlyHint: true,
@@ -1952,7 +1954,7 @@ Hinweis: Nutzt 'tasklist' (Windows) oder 'ps' (Unix)`,
 
       if (!stdout.trim()) {
         return {
-          content: [{ type: "text", text: `🔍 Keine Prozesse gefunden${params.filter ? ` für "${params.filter}"` : ''}.` }]
+          content: [{ type: "text", text: t().fc_list_processes.noProcesses(params.filter) }]
         };
       }
 
@@ -1965,17 +1967,17 @@ Hinweis: Nutzt 'tasklist' (Windows) oder 'ps' (Unix)`,
           const parts = line.split('","').map(p => p.replace(/"/g, ''));
           return `| ${parts[0] || '-'} | ${parts[1] || '-'} | ${parts[4] || '-'} |`;
         });
-        
+
         output = [
-          `📋 **Laufende Prozesse**${params.filter ? ` (Filter: ${params.filter})` : ''}`,
+          t().fc_list_processes.header(params.filter),
           ``,
-          `| Name | PID | Speicher |`,
+          `| ${t().fc_list_processes.colName} | ${t().fc_list_processes.colPid} | ${t().fc_list_processes.colMemory} |`,
           `|------|-----|----------|`,
           ...processes.slice(0, 50)
         ].join('\n');
       } else {
         output = [
-          `📋 **Laufende Prozesse**${params.filter ? ` (Filter: ${params.filter})` : ''}`,
+          t().fc_list_processes.header(params.filter),
           ``,
           '```',
           stdout.trim(),
@@ -1990,7 +1992,7 @@ Hinweis: Nutzt 'tasklist' (Windows) oder 'ps' (Unix)`,
       const errorMsg = error instanceof Error ? error.message : String(error);
       return {
         isError: true,
-        content: [{ type: "text", text: `❌ Fehler beim Auflisten: ${errorMsg}` }]
+        content: [{ type: "text", text: t().fc_list_processes.listError(errorMsg) }]
       };
     }
   }
@@ -2003,19 +2005,19 @@ Hinweis: Nutzt 'tasklist' (Windows) oder 'ps' (Unix)`,
 server.registerTool(
   "fc_kill_process",
   {
-    title: "Prozess beenden",
-    description: `Beendet einen Prozess nach PID oder Name.
+    title: "Kill Process",
+    description: `Terminates a process by PID or name.
 
 Args:
-  - pid (number, optional): Prozess-ID
-  - name (string, optional): Prozessname
-  - force (boolean): Erzwungenes Beenden
+  - pid (number, optional): Process ID
+  - name (string, optional): Process name
+  - force (boolean): Force termination
 
-⚠️ ACHTUNG: Kann zu Datenverlust führen!`,
+Warning: May cause data loss!`,
     inputSchema: {
-      pid: z.number().int().optional().describe("Prozess-ID"),
-      name: z.string().optional().describe("Prozessname"),
-      force: z.boolean().default(false).describe("Erzwingen")
+      pid: z.number().int().optional().describe("Process ID"),
+      name: z.string().optional().describe("Process name"),
+      force: z.boolean().default(false).describe("Force")
     },
     annotations: {
       readOnlyHint: false,
@@ -2028,7 +2030,7 @@ Args:
     if (!params.pid && !params.name) {
       return {
         isError: true,
-        content: [{ type: "text", text: `❌ Entweder 'pid' oder 'name' muss angegeben werden.` }]
+        content: [{ type: "text", text: t().fc_kill_process.pidOrNameRequired }]
       };
     }
 
@@ -2062,16 +2064,16 @@ Args:
       const target = params.pid ? `PID ${params.pid}` : `"${params.name}"`;
 
       return {
-        content: [{ 
-          type: "text", 
-          text: `✅ Prozess beendet: ${target}\n${stdout || stderr || ''}`.trim()
+        content: [{
+          type: "text",
+          text: `${t().fc_kill_process.killed(target)}\n${stdout || stderr || ''}`.trim()
         }]
       };
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : String(error);
       return {
         isError: true,
-        content: [{ type: "text", text: `❌ Fehler beim Beenden: ${errorMsg}` }]
+        content: [{ type: "text", text: t().fc_kill_process.killError(errorMsg) }]
       };
     }
   }
@@ -2084,25 +2086,25 @@ Args:
 server.registerTool(
   "fc_start_session",
   {
-    title: "Interaktive Session starten",
-    description: `Startet einen interaktiven Prozess als Session (für fc_read_output und fc_send_input).
+    title: "Start Interactive Session",
+    description: `Starts an interactive process as a session (for fc_read_output and fc_send_input).
 
 Args:
-  - command (string): Befehl/Programm
-  - args (array, optional): Argumente
-  - cwd (string, optional): Arbeitsverzeichnis
+  - command (string): Command/Program
+  - args (array, optional): Arguments
+  - cwd (string, optional): Working directory
 
 Returns:
-  - Session-ID für weitere Interaktion
+  - Session ID for further interaction
 
-Beispiele:
+Examples:
   - Python REPL: command="python"
   - Node REPL: command="node"
   - PowerShell: command="powershell"`,
     inputSchema: {
-      command: z.string().min(1).describe("Befehl/Programm"),
-      args: z.array(z.string()).default([]).describe("Argumente"),
-      cwd: z.string().optional().describe("Arbeitsverzeichnis")
+      command: z.string().min(1).describe("Command/Program"),
+      args: z.array(z.string()).default([]).describe("Arguments"),
+      cwd: z.string().optional().describe("Working directory")
     },
     annotations: {
       readOnlyHint: false,
@@ -2148,27 +2150,27 @@ Beispiele:
 
       proc.on('close', (code) => {
         session.isRunning = false;
-        session.output.push(`\n[Prozess beendet mit Code ${code}]`);
+        session.output.push(t().fc_start_session.processExited(code));
       });
 
       proc.on('error', (err) => {
         session.isRunning = false;
-        session.output.push(`\n[Fehler: ${err.message}]`);
+        session.output.push(t().fc_start_session.processError(err.message));
       });
 
       processSessions.set(sessionId, session);
 
       return {
-        content: [{ 
-          type: "text", 
-          text: `🚀 **Session gestartet**\n\n| | |\n|---|---|\n| Session-ID | \`${sessionId}\` |\n| Befehl | ${params.command} ${params.args.join(' ')} |\n| PID | ${proc.pid} |\n| Verzeichnis | ${cwd} |\n\nNutze \`fc_read_output\` und \`fc_send_input\` zur Interaktion.`
+        content: [{
+          type: "text",
+          text: `${t().fc_start_session.started(sessionId, `${params.command} ${params.args.join(' ')}`, proc.pid, cwd)}\n\n${t().fc_start_session.useReadAndSend}`
         }]
       };
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : String(error);
       return {
         isError: true,
-        content: [{ type: "text", text: `❌ Fehler beim Starten: ${errorMsg}` }]
+        content: [{ type: "text", text: t().fc_start_session.startError(errorMsg) }]
       };
     }
   }
@@ -2181,18 +2183,18 @@ Beispiele:
 server.registerTool(
   "fc_read_output",
   {
-    title: "Session-Output lesen",
-    description: `Liest die Ausgabe einer laufenden Session.
+    title: "Read Session Output",
+    description: `Reads the output of a running session.
 
 Args:
-  - session_id (string): Session-ID von fc_start_session
-  - clear (boolean, optional): Output nach dem Lesen löschen
+  - session_id (string): Session ID from fc_start_session
+  - clear (boolean, optional): Clear output after reading
 
 Returns:
-  - Gesammelter Output seit Start/letztem Clear`,
+  - Collected output since start/last clear`,
     inputSchema: {
-      session_id: z.string().min(1).describe("Session-ID"),
-      clear: z.boolean().default(false).describe("Output löschen")
+      session_id: z.string().min(1).describe("Session ID"),
+      clear: z.boolean().default(false).describe("Clear output")
     },
     annotations: {
       readOnlyHint: true,
@@ -2207,21 +2209,21 @@ Returns:
     if (!session) {
       return {
         isError: true,
-        content: [{ type: "text", text: `❌ Session nicht gefunden: ${params.session_id}\n\nNutze fc_list_sessions für aktive Sessions.` }]
+        content: [{ type: "text", text: `${t().fc_read_output.notFound(params.session_id)}\n\n${t().fc_read_output.useListSessions}` }]
       };
     }
 
     const output = session.output.join('');
-    const status = session.isRunning ? '🟢 Läuft' : '🔴 Beendet';
+    const status = session.isRunning ? t().fc_read_output.statusRunning : t().fc_read_output.statusEnded;
 
     if (params.clear) {
       session.output = [];
     }
 
     return {
-      content: [{ 
-        type: "text", 
-        text: `📤 **Session Output** (${status})\n\`\`\`\n${output || '(kein Output)'}\n\`\`\``
+      content: [{
+        type: "text",
+        text: `${t().fc_read_output.header(status)}\n\`\`\`\n${output || t().fc_read_output.noOutput}\n\`\`\``
       }]
     };
   }
@@ -2234,21 +2236,21 @@ Returns:
 server.registerTool(
   "fc_send_input",
   {
-    title: "Input an Session senden",
-    description: `Sendet Input an eine laufende Session.
+    title: "Send Input to Session",
+    description: `Sends input to a running session.
 
 Args:
-  - session_id (string): Session-ID
-  - input (string): Zu sendender Input
-  - newline (boolean, optional): Zeilenumbruch anhängen (default: true)
+  - session_id (string): Session ID
+  - input (string): Input to send
+  - newline (boolean, optional): Append newline (default: true)
 
-Beispiele:
+Examples:
   - Python: input="print('Hello')"
   - Shell: input="ls -la"`,
     inputSchema: {
-      session_id: z.string().min(1).describe("Session-ID"),
-      input: z.string().describe("Zu sendender Input"),
-      newline: z.boolean().default(true).describe("Zeilenumbruch anhängen")
+      session_id: z.string().min(1).describe("Session ID"),
+      input: z.string().describe("Input to send"),
+      newline: z.boolean().default(true).describe("Append newline")
     },
     annotations: {
       readOnlyHint: false,
@@ -2263,14 +2265,14 @@ Beispiele:
     if (!session) {
       return {
         isError: true,
-        content: [{ type: "text", text: `❌ Session nicht gefunden: ${params.session_id}` }]
+        content: [{ type: "text", text: t().fc_send_input.notFound(params.session_id) }]
       };
     }
 
     if (!session.isRunning) {
       return {
         isError: true,
-        content: [{ type: "text", text: `❌ Session ist beendet. Starte eine neue mit fc_start_session.` }]
+        content: [{ type: "text", text: t().fc_send_input.sessionEnded }]
       };
     }
 
@@ -2279,16 +2281,16 @@ Beispiele:
       session.process.stdin?.write(inputText);
 
       return {
-        content: [{ 
-          type: "text", 
-          text: `📥 Input gesendet an ${params.session_id}:\n\`\`\`\n${params.input}\n\`\`\`\nNutze \`fc_read_output\` um die Antwort zu lesen.`
+        content: [{
+          type: "text",
+          text: `${t().fc_send_input.sent(params.session_id)}\n\`\`\`\n${params.input}\n\`\`\`\n${t().fc_send_input.useReadOutput}`
         }]
       };
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : String(error);
       return {
         isError: true,
-        content: [{ type: "text", text: `❌ Fehler beim Senden: ${errorMsg}` }]
+        content: [{ type: "text", text: t().fc_send_input.sendError(errorMsg) }]
       };
     }
   }
@@ -2301,11 +2303,11 @@ Beispiele:
 server.registerTool(
   "fc_list_sessions",
   {
-    title: "Sessions auflisten",
-    description: `Listet alle aktiven und beendeten Sessions auf.
+    title: "List Sessions",
+    description: `Lists all active and ended sessions.
 
 Returns:
-  - Tabelle aller Sessions mit Status`,
+  - Table of all sessions with status`,
     inputSchema: {},
     annotations: {
       readOnlyHint: true,
@@ -2317,22 +2319,22 @@ Returns:
   async () => {
     if (processSessions.size === 0) {
       return {
-        content: [{ type: "text", text: `📋 Keine Sessions vorhanden.\n\nStarte eine neue mit \`fc_start_session\`.` }]
+        content: [{ type: "text", text: `${t().fc_list_sessions.noSessions}\n\n${t().fc_list_sessions.useStartSession}` }]
       };
     }
 
     const rows: string[] = [];
-    
+
     for (const [id, session] of processSessions) {
-      const status = session.isRunning ? '🟢' : '🔴';
+      const status = session.isRunning ? '\uD83D\uDFE2' : '\uD83D\uDD34';
       const runtime = Math.round((Date.now() - session.startTime.getTime()) / 1000);
       rows.push(`| ${status} | \`${id}\` | ${session.command} | ${session.process.pid || '-'} | ${runtime}s |`);
     }
 
     const output = [
-      `📋 **Aktive Sessions** (${processSessions.size})`,
+      t().fc_list_sessions.header(processSessions.size),
       ``,
-      `| Status | Session-ID | Befehl | PID | Laufzeit |`,
+      `| ${t().fc_list_sessions.colStatus} | ${t().fc_list_sessions.colSessionId} | ${t().fc_list_sessions.colCommand} | ${t().fc_list_sessions.colPid} | ${t().fc_list_sessions.colRuntime} |`,
       `|--------|------------|--------|-----|----------|`,
       ...rows
     ];
@@ -2350,15 +2352,15 @@ Returns:
 server.registerTool(
   "fc_close_session",
   {
-    title: "Session beenden",
-    description: `Beendet eine laufende Session und entfernt sie aus der Liste.
+    title: "Close Session",
+    description: `Terminates a running session and removes it from the list.
 
 Args:
-  - session_id (string): Session-ID
-  - force (boolean, optional): Erzwungenes Beenden`,
+  - session_id (string): Session ID
+  - force (boolean, optional): Force termination`,
     inputSchema: {
-      session_id: z.string().min(1).describe("Session-ID"),
-      force: z.boolean().default(false).describe("Erzwingen")
+      session_id: z.string().min(1).describe("Session ID"),
+      force: z.boolean().default(false).describe("Force")
     },
     annotations: {
       readOnlyHint: false,
@@ -2373,7 +2375,7 @@ Args:
     if (!session) {
       return {
         isError: true,
-        content: [{ type: "text", text: `❌ Session nicht gefunden: ${params.session_id}` }]
+        content: [{ type: "text", text: t().fc_close_session.notFound(params.session_id) }]
       };
     }
 
@@ -2389,13 +2391,13 @@ Args:
       processSessions.delete(params.session_id);
 
       return {
-        content: [{ type: "text", text: `✅ Session beendet und entfernt: ${params.session_id}` }]
+        content: [{ type: "text", text: t().fc_close_session.closed(params.session_id) }]
       };
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : String(error);
       return {
         isError: true,
-        content: [{ type: "text", text: `❌ Fehler beim Beenden: ${errorMsg}` }]
+        content: [{ type: "text", text: t().fc_close_session.closeError(errorMsg) }]
       };
     }
   }
@@ -2408,19 +2410,19 @@ Args:
 server.registerTool(
   "fc_fix_json",
   {
-    title: "JSON reparieren",
-    description: `Repariert häufige JSON-Fehler automatisch.
+    title: "Fix JSON",
+    description: `Automatically repairs common JSON errors.
 
 Args:
-  - path (string): Pfad zur JSON-Datei
-  - dry_run (boolean, optional): Nur Probleme anzeigen, nicht reparieren
-  - create_backup (boolean, optional): Backup erstellen vor Reparatur
+  - path (string): Path to the JSON file
+  - dry_run (boolean, optional): Only show problems, do not repair
+  - create_backup (boolean, optional): Create backup before repair
 
-Repariert: BOM, Trailing Commas, Single Quotes, Kommentare, NUL-Bytes`,
+Repairs: BOM, trailing commas, single quotes, comments, NUL bytes`,
     inputSchema: {
-      path: z.string().min(1).describe("Pfad zur JSON-Datei"),
-      dry_run: z.boolean().default(false).describe("Nur Probleme anzeigen"),
-      create_backup: z.boolean().default(true).describe("Backup erstellen")
+      path: z.string().min(1).describe("Path to the JSON file"),
+      dry_run: z.boolean().default(false).describe("Only show problems"),
+      create_backup: z.boolean().default(true).describe("Create backup")
     },
     annotations: {
       readOnlyHint: false,
@@ -2433,7 +2435,7 @@ Repariert: BOM, Trailing Commas, Single Quotes, Kommentare, NUL-Bytes`,
     try {
       const filePath = normalizePath(params.path);
       if (!await pathExists(filePath)) {
-        return { isError: true, content: [{ type: "text", text: `❌ Datei nicht gefunden: ${filePath}` }] };
+        return { isError: true, content: [{ type: "text", text: t().common.fileNotFound(filePath) }] };
       }
 
       const rawContent = await fs.readFile(filePath, "utf-8");
@@ -2443,35 +2445,35 @@ Repariert: BOM, Trailing Commas, Single Quotes, Kommentare, NUL-Bytes`,
       // Remove BOM
       if (content.charCodeAt(0) === 0xFEFF) {
         content = content.slice(1);
-        fixes.push("UTF-8 BOM entfernt");
+        fixes.push(t().fc_fix_json.fixBom);
       }
 
       // Remove NUL bytes
       if (content.includes('\0')) {
         content = content.replace(/\0/g, '');
-        fixes.push("NUL-Bytes entfernt");
+        fixes.push(t().fc_fix_json.fixNul);
       }
 
       // Remove single-line comments
       const c1 = content;
       content = content.replace(/^(\s*)\/\/.*$/gm, '');
-      if (content !== c1) fixes.push("Einzeilige Kommentare entfernt");
+      if (content !== c1) fixes.push(t().fc_fix_json.fixSingleLineComments);
 
       // Remove multi-line comments
       const c2 = content;
       content = content.replace(/\/\*[\s\S]*?\*\//g, '');
-      if (content !== c2) fixes.push("Mehrzeilige Kommentare entfernt");
+      if (content !== c2) fixes.push(t().fc_fix_json.fixMultiLineComments);
 
       // Fix trailing commas before } or ]
       const c3 = content;
       content = content.replace(/,(\s*[}\]])/g, '$1');
-      if (content !== c3) fixes.push("Trailing Commas entfernt");
+      if (content !== c3) fixes.push(t().fc_fix_json.fixTrailingCommas);
 
       // Fix single quotes to double quotes for keys and simple values
       const c4 = content;
       content = content.replace(/(\s*)'([^'\\]*(?:\\.[^'\\]*)*)'\s*:/g, '$1"$2":');
       content = content.replace(/:\s*'([^'\\]*(?:\\.[^'\\]*)*)'/g, ': "$1"');
-      if (content !== c4) fixes.push("Single Quotes → Double Quotes");
+      if (content !== c4) fixes.push(t().fc_fix_json.fixSingleQuotes);
 
       // Try to parse
       let isValid = false;
@@ -2479,16 +2481,16 @@ Repariert: BOM, Trailing Commas, Single Quotes, Kommentare, NUL-Bytes`,
       try { JSON.parse(content); isValid = true; } catch (e) { parseError = e instanceof Error ? e.message : String(e); }
 
       if (fixes.length === 0 && isValid) {
-        return { content: [{ type: "text", text: `✅ ${path.basename(filePath)} ist bereits gültiges JSON.` }] };
+        return { content: [{ type: "text", text: t().fc_fix_json.alreadyValid(path.basename(filePath)) }] };
       }
 
       if (params.dry_run) {
         return {
           content: [{ type: "text", text: [
-            `🔍 **JSON-Analyse: ${path.basename(filePath)}**`, '',
-            fixes.length > 0 ? `**Gefundene Probleme:**` : `Keine automatisch reparierbaren Probleme.`,
+            t().fc_fix_json.analysisHeader(path.basename(filePath)), '',
+            fixes.length > 0 ? t().fc_fix_json.foundProblems : t().fc_fix_json.noAutoFixable,
             ...fixes.map(f => `  - ${f}`), '',
-            isValid ? `✅ Nach Reparatur: Gültiges JSON` : `⚠️ Nach Reparatur noch ungültig: ${parseError}`
+            isValid ? t().fc_fix_json.afterFixValid : t().fc_fix_json.afterFixInvalid(parseError)
           ].join('\n') }]
         };
       }
@@ -2504,14 +2506,14 @@ Repariert: BOM, Trailing Commas, Single Quotes, Kommentare, NUL-Bytes`,
 
       return {
         content: [{ type: "text", text: [
-          `✅ **JSON repariert: ${path.basename(filePath)}**`, '',
+          t().fc_fix_json.repairedHeader(path.basename(filePath)), '',
           ...fixes.map(f => `  - ${f}`), '',
-          isValid ? `✅ Gültiges JSON` : `⚠️ Noch ungültig: ${parseError}`,
-          params.create_backup ? `📋 Backup: ${filePath}.bak` : ''
+          isValid ? t().fc_fix_json.validJson : t().fc_fix_json.stillInvalid(parseError),
+          params.create_backup ? t().fc_fix_json.backupCreated(`${filePath}.bak`) : ''
         ].join('\n') }]
       };
     } catch (error) {
-      return { isError: true, content: [{ type: "text", text: `❌ Fehler: ${error instanceof Error ? error.message : String(error)}` }] };
+      return { isError: true, content: [{ type: "text", text: t().common.errorGeneric(error instanceof Error ? error.message : String(error)) }] };
     }
   }
 );
@@ -2523,16 +2525,16 @@ Repariert: BOM, Trailing Commas, Single Quotes, Kommentare, NUL-Bytes`,
 server.registerTool(
   "fc_validate_json",
   {
-    title: "JSON validieren",
-    description: `Validiert eine JSON-Datei und zeigt detaillierte Fehlerinformationen.
+    title: "Validate JSON",
+    description: `Validates a JSON file and shows detailed error information.
 
 Args:
-  - path (string): Pfad zur JSON-Datei
+  - path (string): Path to the JSON file
 
 Returns:
-  - Validierungsstatus mit Zeile/Spalte bei Fehlern`,
+  - Validation status with line/column on errors`,
     inputSchema: {
-      path: z.string().min(1).describe("Pfad zur JSON-Datei")
+      path: z.string().min(1).describe("Path to the JSON file")
     },
     annotations: {
       readOnlyHint: true,
@@ -2545,7 +2547,7 @@ Returns:
     try {
       const filePath = normalizePath(params.path);
       if (!await pathExists(filePath)) {
-        return { isError: true, content: [{ type: "text", text: `❌ Datei nicht gefunden: ${filePath}` }] };
+        return { isError: true, content: [{ type: "text", text: t().common.fileNotFound(filePath) }] };
       }
 
       const content = await fs.readFile(filePath, "utf-8");
@@ -2554,16 +2556,15 @@ Returns:
       try {
         const parsed = JSON.parse(content);
         const keyCount = typeof parsed === 'object' && parsed !== null ? Object.keys(parsed).length : 0;
-        const type = Array.isArray(parsed) ? `Array (${parsed.length} Elemente)` : typeof parsed === 'object' && parsed !== null ? `Objekt (${keyCount} Schlüssel)` : typeof parsed;
+        const jsonType = Array.isArray(parsed) ? t().fc_validate_json.typeArray(parsed.length) : typeof parsed === 'object' && parsed !== null ? t().fc_validate_json.typeObject(keyCount) : typeof parsed;
 
         return {
           content: [{ type: "text", text: [
-            `✅ **Gültiges JSON: ${path.basename(filePath)}**`, '',
-            `| Eigenschaft | Wert |`, `|---|---|`,
-            `| Typ | ${type} |`,
-            `| Größe | ${formatFileSize(stats.size)} |`,
-            `| BOM | ${content.charCodeAt(0) === 0xFEFF ? '⚠️ Ja' : 'Nein'} |`,
-            `| Encoding | UTF-8 |`
+            t().fc_validate_json.validHeader(path.basename(filePath)), '',
+            `| ${t().fc_validate_json.propType} | ${jsonType} |`, `|---|---|`,
+            `| ${t().fc_validate_json.propSize} | ${formatFileSize(stats.size)} |`,
+            `| ${t().fc_validate_json.propBom} | ${content.charCodeAt(0) === 0xFEFF ? t().fc_validate_json.propBomYes : t().fc_validate_json.propBomNo} |`,
+            `| ${t().fc_validate_json.propEncoding} | UTF-8 |`
           ].join('\n') }]
         };
       } catch (e) {
@@ -2578,15 +2579,15 @@ Returns:
           const col = pos - before.lastIndexOf('\n');
           const lines = content.split('\n');
           const contextLines = lines.slice(Math.max(0, line - 3), line + 2);
-          lineInfo = `\n**Fehlerposition:** Zeile ${line}, Spalte ${col}\n\n\`\`\`\n${contextLines.map((l, i) => `${Math.max(1, line - 2) + i}: ${l}`).join('\n')}\n\`\`\``;
+          lineInfo = `\n${t().fc_validate_json.errorPosition(line, col)}\n\n\`\`\`\n${contextLines.map((l, i) => `${Math.max(1, line - 2) + i}: ${l}`).join('\n')}\n\`\`\``;
         }
 
         return {
-          content: [{ type: "text", text: `❌ **Ungültiges JSON: ${path.basename(filePath)}**\n\n**Fehler:** ${errorMsg}${lineInfo}\n\n💡 Nutze \`fc_fix_json\` für automatische Reparatur.` }]
+          content: [{ type: "text", text: `${t().fc_validate_json.invalidHeader(path.basename(filePath))}\n\n${t().fc_validate_json.errorLabel} ${errorMsg}${lineInfo}\n\n${t().fc_validate_json.useFcFixJson}` }]
         };
       }
     } catch (error) {
-      return { isError: true, content: [{ type: "text", text: `❌ Fehler: ${error instanceof Error ? error.message : String(error)}` }] };
+      return { isError: true, content: [{ type: "text", text: t().common.errorGeneric(error instanceof Error ? error.message : String(error)) }] };
     }
   }
 );
@@ -2598,29 +2599,29 @@ Returns:
 server.registerTool(
   "fc_cleanup_file",
   {
-    title: "Datei bereinigen",
-    description: `Bereinigt eine oder mehrere Dateien von häufigen Problemen.
+    title: "Cleanup File",
+    description: `Cleans up one or more files from common problems.
 
 Args:
-  - path (string): Pfad zu Datei oder Verzeichnis
-  - recursive (boolean, optional): Bei Verzeichnis rekursiv
-  - extensions (string, optional): Dateierweiterungen filtern (z.B. ".txt,.json,.py")
-  - remove_bom (boolean): UTF-8 BOM entfernen
-  - remove_trailing_whitespace (boolean): Trailing Whitespace entfernen
+  - path (string): Path to file or directory
+  - recursive (boolean, optional): Recursive for directories
+  - extensions (string, optional): Filter file extensions (e.g. ".txt,.json,.py")
+  - remove_bom (boolean): Remove UTF-8 BOM
+  - remove_trailing_whitespace (boolean): Remove trailing whitespace
   - normalize_line_endings (string, optional): "lf" | "crlf" | null
-  - remove_nul_bytes (boolean): NUL-Bytes entfernen
-  - dry_run (boolean): Nur anzeigen
+  - remove_nul_bytes (boolean): Remove NUL bytes
+  - dry_run (boolean): Preview only
 
-Bereinigt: BOM, NUL-Bytes, Trailing Whitespace, Line Endings`,
+Cleans: BOM, NUL bytes, trailing whitespace, line endings`,
     inputSchema: {
-      path: z.string().min(1).describe("Pfad zu Datei/Verzeichnis"),
-      recursive: z.boolean().default(false).describe("Rekursiv"),
-      extensions: z.string().optional().describe("Erweiterungen filtern (.txt,.json)"),
-      remove_bom: z.boolean().default(true).describe("BOM entfernen"),
-      remove_trailing_whitespace: z.boolean().default(true).describe("Trailing Whitespace"),
-      normalize_line_endings: z.enum(["lf", "crlf"]).optional().describe("Line Endings"),
-      remove_nul_bytes: z.boolean().default(true).describe("NUL-Bytes entfernen"),
-      dry_run: z.boolean().default(false).describe("Nur anzeigen")
+      path: z.string().min(1).describe("Path to file/directory"),
+      recursive: z.boolean().default(false).describe("Recursive"),
+      extensions: z.string().optional().describe("Filter extensions (.txt,.json)"),
+      remove_bom: z.boolean().default(true).describe("Remove BOM"),
+      remove_trailing_whitespace: z.boolean().default(true).describe("Trailing whitespace"),
+      normalize_line_endings: z.enum(["lf", "crlf"]).optional().describe("Line endings"),
+      remove_nul_bytes: z.boolean().default(true).describe("Remove NUL bytes"),
+      dry_run: z.boolean().default(false).describe("Preview only")
     },
     annotations: {
       readOnlyHint: false,
@@ -2633,7 +2634,7 @@ Bereinigt: BOM, NUL-Bytes, Trailing Whitespace, Line Endings`,
     try {
       const targetPath = normalizePath(params.path);
       if (!await pathExists(targetPath)) {
-        return { isError: true, content: [{ type: "text", text: `❌ Pfad nicht gefunden: ${targetPath}` }] };
+        return { isError: true, content: [{ type: "text", text: t().common.pathNotFound(targetPath) }] };
       }
 
       const stats = await fs.stat(targetPath);
@@ -2706,17 +2707,17 @@ Bereinigt: BOM, NUL-Bytes, Trailing Whitespace, Line Endings`,
       }
 
       if (totalFixed === 0) {
-        return { content: [{ type: "text", text: `✅ Keine Bereinigung nötig. ${files.length} Dateien geprüft.` }] };
+        return { content: [{ type: "text", text: t().fc_cleanup_file.noCleanupNeeded(files.length) }] };
       }
 
       return {
         content: [{ type: "text", text: [
-          `${params.dry_run ? '🔍 **Vorschau**' : '✅ **Bereinigt**'}: ${totalFixed}/${files.length} Dateien`, '',
+          `${params.dry_run ? t().fc_cleanup_file.previewHeader : t().fc_cleanup_file.cleanedHeader}: ${t().fc_cleanup_file.cleanedCount(totalFixed, files.length)}`, '',
           ...results
         ].join('\n') }]
       };
     } catch (error) {
-      return { isError: true, content: [{ type: "text", text: `❌ Fehler: ${error instanceof Error ? error.message : String(error)}` }] };
+      return { isError: true, content: [{ type: "text", text: t().common.errorGeneric(error instanceof Error ? error.message : String(error)) }] };
     }
   }
 );
@@ -2728,22 +2729,21 @@ Bereinigt: BOM, NUL-Bytes, Trailing Whitespace, Line Endings`,
 server.registerTool(
   "fc_fix_encoding",
   {
-    title: "Encoding reparieren",
-    description: `Erkennt und repariert Encoding-Fehler (Mojibake, doppeltes UTF-8).
+    title: "Fix Encoding",
+    description: `Detects and repairs encoding errors (mojibake, double UTF-8).
 
 Args:
-  - path (string): Pfad zur Datei
-  - dry_run (boolean): Nur Probleme anzeigen
-  - create_backup (boolean): Backup erstellen
+  - path (string): Path to the file
+  - dry_run (boolean): Only show problems
+  - create_backup (boolean): Create backup
 
-Repariert häufige Mojibake-Muster wie:
-  - Ã¤ → ä, Ã¶ → ö, Ã¼ → ü
-  - Ã„ → Ä, Ã– → Ö, Ãœ → Ü
-  - ÃŸ → ß, â‚¬ → €`,
+Repairs common mojibake patterns like:
+  - Ã¤ -> ae, Ã¶ -> oe, Ã¼ -> ue (German umlauts)
+  - ÃŸ -> ss, â‚¬ -> EUR`,
     inputSchema: {
-      path: z.string().min(1).describe("Pfad zur Datei"),
-      dry_run: z.boolean().default(false).describe("Nur anzeigen"),
-      create_backup: z.boolean().default(true).describe("Backup erstellen")
+      path: z.string().min(1).describe("Path to the file"),
+      dry_run: z.boolean().default(false).describe("Preview only"),
+      create_backup: z.boolean().default(true).describe("Create backup")
     },
     annotations: {
       readOnlyHint: false,
@@ -2756,7 +2756,7 @@ Repariert häufige Mojibake-Muster wie:
     try {
       const filePath = normalizePath(params.path);
       if (!await pathExists(filePath)) {
-        return { isError: true, content: [{ type: "text", text: `❌ Datei nicht gefunden: ${filePath}` }] };
+        return { isError: true, content: [{ type: "text", text: t().common.fileNotFound(filePath) }] };
       }
 
       const rawContent = await fs.readFile(filePath, "utf-8");
@@ -2791,14 +2791,14 @@ Repariert häufige Mojibake-Muster wie:
       }
 
       if (fixes.length === 0) {
-        return { content: [{ type: "text", text: `✅ Keine Encoding-Fehler in ${path.basename(filePath)} gefunden.` }] };
+        return { content: [{ type: "text", text: t().fc_fix_encoding.noErrors(path.basename(filePath)) }] };
       }
 
       if (params.dry_run) {
         return {
           content: [{ type: "text", text: [
-            `🔍 **Encoding-Analyse: ${path.basename(filePath)}**`, '',
-            `**Gefundene Mojibake-Muster:**`,
+            t().fc_fix_encoding.analysisHeader(path.basename(filePath)), '',
+            t().fc_fix_encoding.foundMojibake,
             ...fixes.map(f => `  - ${f}`)
           ].join('\n') }]
         };
@@ -2811,13 +2811,13 @@ Repariert häufige Mojibake-Muster wie:
 
       return {
         content: [{ type: "text", text: [
-          `✅ **Encoding repariert: ${path.basename(filePath)}**`, '',
+          t().fc_fix_encoding.repairedHeader(path.basename(filePath)), '',
           ...fixes.map(f => `  - ${f}`),
-          params.create_backup ? `\n📋 Backup: ${filePath}.bak` : ''
+          params.create_backup ? `\n${t().fc_fix_encoding.backupCreated(`${filePath}.bak`)}` : ''
         ].join('\n') }]
       };
     } catch (error) {
-      return { isError: true, content: [{ type: "text", text: `❌ Fehler: ${error instanceof Error ? error.message : String(error)}` }] };
+      return { isError: true, content: [{ type: "text", text: t().common.errorGeneric(error instanceof Error ? error.message : String(error)) }] };
     }
   }
 );
@@ -2829,20 +2829,20 @@ Repariert häufige Mojibake-Muster wie:
 server.registerTool(
   "fc_folder_diff",
   {
-    title: "Verzeichnis-Änderungen erkennen",
-    description: `Vergleicht den aktuellen Zustand eines Verzeichnisses mit einem gespeicherten Snapshot.
+    title: "Folder Diff",
+    description: `Compares the current state of a directory with a saved snapshot.
 
 Args:
-  - path (string): Pfad zum Verzeichnis
-  - save_snapshot (boolean): Aktuellen Zustand als neuen Snapshot speichern
-  - extensions (string, optional): Dateierweiterungen filtern
+  - path (string): Path to the directory
+  - save_snapshot (boolean): Save current state as new snapshot
+  - extensions (string, optional): Filter file extensions
 
-Erkennt: Neue Dateien, geänderte Dateien, gelöschte Dateien
-Snapshots werden in %TEMP%/.fc_snapshots/ gespeichert.`,
+Detects: New files, modified files, deleted files
+Snapshots are saved in %TEMP%/.fc_snapshots/`,
     inputSchema: {
-      path: z.string().min(1).describe("Pfad zum Verzeichnis"),
-      save_snapshot: z.boolean().default(true).describe("Snapshot speichern"),
-      extensions: z.string().optional().describe("Erweiterungen filtern")
+      path: z.string().min(1).describe("Path to the directory"),
+      save_snapshot: z.boolean().default(true).describe("Save snapshot"),
+      extensions: z.string().optional().describe("Filter extensions")
     },
     annotations: {
       readOnlyHint: true,
@@ -2855,7 +2855,7 @@ Snapshots werden in %TEMP%/.fc_snapshots/ gespeichert.`,
     try {
       const dirPath = normalizePath(params.path);
       if (!await pathExists(dirPath)) {
-        return { isError: true, content: [{ type: "text", text: `❌ Verzeichnis nicht gefunden: ${dirPath}` }] };
+        return { isError: true, content: [{ type: "text", text: t().common.dirNotFound(dirPath) }] };
       }
 
       const extFilter = params.extensions ? params.extensions.split(',').map(e => e.trim().toLowerCase()) : null;
@@ -2927,44 +2927,44 @@ Snapshots werden in %TEMP%/.fc_snapshots/ gespeichert.`,
       if (!hasSnapshot) {
         return {
           content: [{ type: "text", text: [
-            `📸 **Erster Snapshot erstellt: ${path.basename(dirPath)}**`, '',
+            t().fc_folder_diff.firstSnapshot(path.basename(dirPath)), '',
             `| | |`, `|---|---|`,
-            `| Dateien | ${totalFiles} |`,
-            `| Snapshot | ${snapshotFile} |`, '',
-            `Beim nächsten Aufruf werden Änderungen erkannt.`
+            `| ${t().fc_folder_diff.labelFiles} | ${totalFiles} |`,
+            `| ${t().fc_folder_diff.labelSnapshot} | ${snapshotFile} |`, '',
+            t().fc_folder_diff.nextCallInfo
           ].join('\n') }]
         };
       }
 
       if (totalChanges === 0) {
-        return { content: [{ type: "text", text: `✅ Keine Änderungen in ${path.basename(dirPath)}. ${totalFiles} Dateien geprüft.` }] };
+        return { content: [{ type: "text", text: t().fc_folder_diff.noChanges(path.basename(dirPath), totalFiles) }] };
       }
 
       const output = [
-        `📊 **Verzeichnis-Diff: ${path.basename(dirPath)}**`, '',
-        `| Kategorie | Anzahl |`, `|---|---|`,
-        `| Neue Dateien | ${newFiles.length} |`,
-        `| Geändert | ${modifiedFiles.length} |`,
-        `| Gelöscht | ${deletedFiles.length} |`,
-        `| Unverändert | ${totalFiles - newFiles.length - modifiedFiles.length} |`
+        t().fc_folder_diff.diffHeader(path.basename(dirPath)), '',
+        `| | |`, `|---|---|`,
+        `| ${t().fc_folder_diff.catNew} | ${newFiles.length} |`,
+        `| ${t().fc_folder_diff.catModified} | ${modifiedFiles.length} |`,
+        `| ${t().fc_folder_diff.catDeleted} | ${deletedFiles.length} |`,
+        `| ${t().fc_folder_diff.catUnchanged} | ${totalFiles - newFiles.length - modifiedFiles.length} |`
       ];
 
       if (newFiles.length > 0) {
-        output.push('', '**Neue Dateien:**', ...newFiles.slice(0, 50).map(f => `  🟢 ${f}`));
-        if (newFiles.length > 50) output.push(`  ... und ${newFiles.length - 50} weitere`);
+        output.push('', t().fc_folder_diff.newFiles, ...newFiles.slice(0, 50).map(f => `  \uD83D\uDFE2 ${f}`));
+        if (newFiles.length > 50) output.push(`  ${t().fc_folder_diff.andMore(newFiles.length - 50)}`);
       }
       if (modifiedFiles.length > 0) {
-        output.push('', '**Geänderte Dateien:**', ...modifiedFiles.slice(0, 50).map(f => `  🟡 ${f}`));
-        if (modifiedFiles.length > 50) output.push(`  ... und ${modifiedFiles.length - 50} weitere`);
+        output.push('', t().fc_folder_diff.modifiedFiles, ...modifiedFiles.slice(0, 50).map(f => `  \uD83D\uDFE1 ${f}`));
+        if (modifiedFiles.length > 50) output.push(`  ${t().fc_folder_diff.andMore(modifiedFiles.length - 50)}`);
       }
       if (deletedFiles.length > 0) {
-        output.push('', '**Gelöschte Dateien:**', ...deletedFiles.slice(0, 50).map(f => `  🔴 ${f}`));
-        if (deletedFiles.length > 50) output.push(`  ... und ${deletedFiles.length - 50} weitere`);
+        output.push('', t().fc_folder_diff.deletedFiles, ...deletedFiles.slice(0, 50).map(f => `  \uD83D\uDD34 ${f}`));
+        if (deletedFiles.length > 50) output.push(`  ${t().fc_folder_diff.andMore(deletedFiles.length - 50)}`);
       }
 
       return { content: [{ type: "text", text: output.join('\n') }] };
     } catch (error) {
-      return { isError: true, content: [{ type: "text", text: `❌ Fehler: ${error instanceof Error ? error.message : String(error)}` }] };
+      return { isError: true, content: [{ type: "text", text: t().common.errorGeneric(error instanceof Error ? error.message : String(error)) }] };
     }
   }
 );
@@ -2976,27 +2976,27 @@ Snapshots werden in %TEMP%/.fc_snapshots/ gespeichert.`,
 server.registerTool(
   "fc_batch_rename",
   {
-    title: "Batch-Umbenennung",
-    description: `Benennt Dateien nach Muster um: Prefix/Suffix entfernen, ersetzen, oder Pattern.
+    title: "Batch Rename",
+    description: `Renames files by pattern: remove prefix/suffix, replace, or auto-detect.
 
 Args:
-  - directory (string): Verzeichnis mit den Dateien
+  - directory (string): Directory with the files
   - mode (string): "remove_prefix" | "remove_suffix" | "replace" | "auto_detect"
-  - pattern (string, optional): Zu entfernender/ersetzender Text
-  - replacement (string, optional): Ersetzungstext (für replace-Modus)
-  - extensions (string, optional): Nur bestimmte Erweiterungen
-  - dry_run (boolean): Nur Vorschau
+  - pattern (string, optional): Text to remove/replace
+  - replacement (string, optional): Replacement text (for replace mode)
+  - extensions (string, optional): Filter by extensions
+  - dry_run (boolean): Preview only
 
-Beispiele:
-  - Prefix entfernen: mode="remove_prefix", pattern="backup_"
-  - Auto-Detect: mode="auto_detect" erkennt gemeinsame Prefixe`,
+Examples:
+  - Remove prefix: mode="remove_prefix", pattern="backup_"
+  - Auto-detect: mode="auto_detect" detects common prefixes`,
     inputSchema: {
-      directory: z.string().min(1).describe("Verzeichnis"),
-      mode: z.enum(["remove_prefix", "remove_suffix", "replace", "auto_detect"]).describe("Modus"),
-      pattern: z.string().optional().describe("Zu entfernender/ersetzender Text"),
-      replacement: z.string().default("").describe("Ersetzungstext"),
-      extensions: z.string().optional().describe("Erweiterungen filtern"),
-      dry_run: z.boolean().default(true).describe("Nur Vorschau")
+      directory: z.string().min(1).describe("Directory"),
+      mode: z.enum(["remove_prefix", "remove_suffix", "replace", "auto_detect"]).describe("Mode"),
+      pattern: z.string().optional().describe("Text to remove/replace"),
+      replacement: z.string().default("").describe("Replacement text"),
+      extensions: z.string().optional().describe("Filter extensions"),
+      dry_run: z.boolean().default(true).describe("Preview only")
     },
     annotations: {
       readOnlyHint: false,
@@ -3009,7 +3009,7 @@ Beispiele:
     try {
       const dirPath = normalizePath(params.directory);
       if (!await pathExists(dirPath)) {
-        return { isError: true, content: [{ type: "text", text: `❌ Verzeichnis nicht gefunden: ${dirPath}` }] };
+        return { isError: true, content: [{ type: "text", text: t().common.dirNotFound(dirPath) }] };
       }
 
       const extFilter = params.extensions ? params.extensions.split(',').map(e => e.trim().toLowerCase()) : null;
@@ -3017,7 +3017,7 @@ Beispiele:
       const files = entries.filter(e => e.isFile() && (!extFilter || extFilter.includes(path.extname(e.name).toLowerCase())));
 
       if (files.length === 0) {
-        return { content: [{ type: "text", text: `🔍 Keine passenden Dateien in ${dirPath}` }] };
+        return { content: [{ type: "text", text: t().fc_batch_rename.noMatchingFiles(dirPath) }] };
       }
 
       const renames: { old: string; new: string }[] = [];
@@ -3045,7 +3045,7 @@ Beispiele:
         if (commonSuffix.length >= 3) detections.push(`Suffix: "${commonSuffix}"`);
 
         if (detections.length === 0) {
-          return { content: [{ type: "text", text: `🔍 Kein gemeinsames Muster erkannt bei ${files.length} Dateien.` }] };
+          return { content: [{ type: "text", text: t().fc_batch_rename.noCommonPattern(files.length) }] };
         }
 
         // Use prefix if found
@@ -3060,18 +3060,18 @@ Beispiele:
 
         return {
           content: [{ type: "text", text: [
-            `🔍 **Auto-Detect: ${files.length} Dateien**`, '',
-            `Erkannte Muster: ${detections.join(', ')}`, '',
-            renames.length > 0 ? `**Vorgeschlagene Umbenennung (Prefix "${commonPrefix}" entfernen):**` : '',
-            ...renames.slice(0, 30).map(r => `  ${r.old} → ${r.new}`),
-            renames.length > 30 ? `  ... und ${renames.length - 30} weitere` : '', '',
-            `💡 Nutze \`mode="remove_prefix", pattern="${commonPrefix}", dry_run=false\` zum Ausführen.`
+            t().fc_batch_rename.autoDetectHeader(files.length), '',
+            t().fc_batch_rename.detectedPatterns(detections.join(', ')), '',
+            renames.length > 0 ? t().fc_batch_rename.suggestedRename(commonPrefix) : '',
+            ...renames.slice(0, 30).map(r => `  ${r.old} \u2192 ${r.new}`),
+            renames.length > 30 ? `  ${t().fc_batch_rename.andMore(renames.length - 30)}` : '', '',
+            t().fc_batch_rename.useTip(commonPrefix)
           ].join('\n') }]
         };
       }
 
       if (!params.pattern) {
-        return { isError: true, content: [{ type: "text", text: `❌ 'pattern' erforderlich für Modus "${params.mode}".` }] };
+        return { isError: true, content: [{ type: "text", text: t().fc_batch_rename.patternRequired(params.mode) }] };
       }
 
       for (const f of files) {
@@ -3098,15 +3098,15 @@ Beispiele:
       }
 
       if (renames.length === 0) {
-        return { content: [{ type: "text", text: `🔍 Keine Dateien passen zum Muster "${params.pattern}".` }] };
+        return { content: [{ type: "text", text: t().fc_batch_rename.noFilesMatchPattern(params.pattern) }] };
       }
 
       if (params.dry_run) {
         return {
           content: [{ type: "text", text: [
-            `🔍 **Vorschau: ${renames.length} Umbenennungen**`, '',
-            ...renames.map(r => `  ${r.old} → ${r.new}`), '',
-            `💡 Setze \`dry_run=false\` zum Ausführen.`
+            t().fc_batch_rename.previewHeader(renames.length), '',
+            ...renames.map(r => `  ${r.old} \u2192 ${r.new}`), '',
+            t().fc_batch_rename.setDryRunFalse
           ].join('\n') }]
         };
       }
@@ -3124,12 +3124,12 @@ Beispiele:
 
       return {
         content: [{ type: "text", text: [
-          `✅ **${successCount}/${renames.length} Dateien umbenannt**`,
-          ...errors.map(e => `  ❌ ${e}`)
+          t().fc_batch_rename.renamed(successCount, renames.length),
+          ...errors.map(e => `  \u274C ${e}`)
         ].join('\n') }]
       };
     } catch (error) {
-      return { isError: true, content: [{ type: "text", text: `❌ Fehler: ${error instanceof Error ? error.message : String(error)}` }] };
+      return { isError: true, content: [{ type: "text", text: t().common.errorGeneric(error instanceof Error ? error.message : String(error)) }] };
     }
   }
 );
@@ -3141,26 +3141,26 @@ Beispiele:
 server.registerTool(
   "fc_convert_format",
   {
-    title: "Format konvertieren",
-    description: `Konvertiert Dateien zwischen verschiedenen Formaten.
+    title: "Convert Format",
+    description: `Converts files between different formats.
 
 Args:
-  - input_path (string): Pfad zur Quelldatei
-  - output_path (string): Pfad zur Zieldatei
+  - input_path (string): Path to source file
+  - output_path (string): Path to target file
   - input_format (string): "json" | "csv" | "ini"
   - output_format (string): "json" | "csv" | "ini"
-  - json_indent (number, optional): Einrückung für JSON (default: 2)
+  - json_indent (number, optional): JSON indentation (default: 2)
 
-Unterstützte Konvertierungen:
-  - JSON ↔ CSV (bei Arrays von Objekten)
-  - JSON ↔ INI (bei flachen Objekten/Sektionen)
+Supported conversions:
+  - JSON <-> CSV (for arrays of objects)
+  - JSON <-> INI (for flat objects/sections)
   - JSON pretty-print / minify`,
     inputSchema: {
-      input_path: z.string().min(1).describe("Quelldatei"),
-      output_path: z.string().min(1).describe("Zieldatei"),
-      input_format: z.enum(["json", "csv", "ini"]).describe("Eingabeformat"),
-      output_format: z.enum(["json", "csv", "ini"]).describe("Ausgabeformat"),
-      json_indent: z.number().int().min(0).max(8).default(2).describe("JSON Einrückung")
+      input_path: z.string().min(1).describe("Source file"),
+      output_path: z.string().min(1).describe("Target file"),
+      input_format: z.enum(["json", "csv", "ini"]).describe("Input format"),
+      output_format: z.enum(["json", "csv", "ini"]).describe("Output format"),
+      json_indent: z.number().int().min(0).max(8).default(2).describe("JSON indentation")
     },
     annotations: {
       readOnlyHint: false,
@@ -3174,7 +3174,7 @@ Unterstützte Konvertierungen:
       const inputPath = normalizePath(params.input_path);
       const outputPath = normalizePath(params.output_path);
       if (!await pathExists(inputPath)) {
-        return { isError: true, content: [{ type: "text", text: `❌ Quelldatei nicht gefunden: ${inputPath}` }] };
+        return { isError: true, content: [{ type: "text", text: t().fc_convert_format.sourceNotFound(inputPath) }] };
       }
 
       const rawContent = await fs.readFile(inputPath, "utf-8");
@@ -3188,7 +3188,7 @@ Unterstützte Konvertierungen:
         case 'csv': {
           const lines = rawContent.trim().split('\n');
           if (lines.length < 2) {
-            return { isError: true, content: [{ type: "text", text: `❌ CSV benötigt mindestens Header + 1 Datenzeile.` }] };
+            return { isError: true, content: [{ type: "text", text: t().fc_convert_format.csvNeedsRows }] };
           }
           const headers = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g, ''));
           data = lines.slice(1).map(line => {
@@ -3234,7 +3234,7 @@ Unterstützte Konvertierungen:
           break;
         case 'csv': {
           if (!Array.isArray(data)) {
-            return { isError: true, content: [{ type: "text", text: `❌ CSV-Export erfordert ein JSON-Array von Objekten.` }] };
+            return { isError: true, content: [{ type: "text", text: t().fc_convert_format.csvNeedsArray }] };
           }
           const headers = Object.keys(data[0] || {});
           const rows = data.map((item: Record<string, unknown>) =>
@@ -3248,7 +3248,7 @@ Unterstützte Konvertierungen:
         }
         case 'ini': {
           if (typeof data !== 'object' || data === null || Array.isArray(data)) {
-            return { isError: true, content: [{ type: "text", text: `❌ INI-Export erfordert ein JSON-Objekt.` }] };
+            return { isError: true, content: [{ type: "text", text: t().fc_convert_format.iniNeedsObject }] };
           }
           const lines: string[] = [];
           for (const [section, values] of Object.entries(data as Record<string, unknown>)) {
@@ -3278,15 +3278,15 @@ Unterstützte Konvertierungen:
 
       return {
         content: [{ type: "text", text: [
-          `✅ **Konvertiert: ${params.input_format.toUpperCase()} → ${params.output_format.toUpperCase()}**`, '',
+          t().fc_convert_format.converted(params.input_format.toUpperCase(), params.output_format.toUpperCase()), '',
           `| | |`, `|---|---|`,
-          `| Quelle | ${inputPath} |`,
-          `| Ziel | ${outputPath} |`,
-          `| Größe | ${formatFileSize(outStats.size)} |`
+          `| ${t().fc_convert_format.labelSource} | ${inputPath} |`,
+          `| ${t().fc_convert_format.labelTarget} | ${outputPath} |`,
+          `| ${t().fc_convert_format.labelSize} | ${formatFileSize(outStats.size)} |`
         ].join('\n') }]
       };
     } catch (error) {
-      return { isError: true, content: [{ type: "text", text: `❌ Fehler: ${error instanceof Error ? error.message : String(error)}` }] };
+      return { isError: true, content: [{ type: "text", text: t().common.errorGeneric(error instanceof Error ? error.message : String(error)) }] };
     }
   }
 );
@@ -3298,24 +3298,24 @@ Unterstützte Konvertierungen:
 server.registerTool(
   "fc_detect_duplicates",
   {
-    title: "Duplikate erkennen",
-    description: `Findet Datei-Duplikate in einem Verzeichnis anhand von SHA-256 Hashes.
+    title: "Detect Duplicates",
+    description: `Finds file duplicates in a directory using SHA-256 hashes.
 
 Args:
-  - directory (string): Verzeichnis zum Scannen
-  - recursive (boolean): Rekursiv suchen
-  - extensions (string, optional): Nur bestimmte Erweiterungen
-  - min_size (number, optional): Mindestgröße in Bytes (default: 1)
-  - max_size (number, optional): Maximale Größe in Bytes
+  - directory (string): Directory to scan
+  - recursive (boolean): Search recursively
+  - extensions (string, optional): Filter by extensions
+  - min_size (number, optional): Minimum size in bytes (default: 1)
+  - max_size (number, optional): Maximum size in bytes
 
 Returns:
-  - Gruppen von Duplikaten mit Pfaden und Größen`,
+  - Groups of duplicates with paths and sizes`,
     inputSchema: {
-      directory: z.string().min(1).describe("Verzeichnis"),
-      recursive: z.boolean().default(true).describe("Rekursiv"),
-      extensions: z.string().optional().describe("Erweiterungen filtern"),
-      min_size: z.number().int().min(0).default(1).describe("Mindestgröße in Bytes"),
-      max_size: z.number().int().optional().describe("Maximale Größe in Bytes")
+      directory: z.string().min(1).describe("Directory"),
+      recursive: z.boolean().default(true).describe("Recursive"),
+      extensions: z.string().optional().describe("Filter extensions"),
+      min_size: z.number().int().min(0).default(1).describe("Minimum size in bytes"),
+      max_size: z.number().int().optional().describe("Maximum size in bytes")
     },
     annotations: {
       readOnlyHint: true,
@@ -3328,7 +3328,7 @@ Returns:
     try {
       const dirPath = normalizePath(params.directory);
       if (!await pathExists(dirPath)) {
-        return { isError: true, content: [{ type: "text", text: `❌ Verzeichnis nicht gefunden: ${dirPath}` }] };
+        return { isError: true, content: [{ type: "text", text: t().common.dirNotFound(dirPath) }] };
       }
 
       const extFilter = params.extensions ? params.extensions.split(',').map(e => e.trim().toLowerCase()) : null;
@@ -3392,36 +3392,36 @@ Returns:
 
       if (duplicates.length === 0) {
         return {
-          content: [{ type: "text", text: `✅ Keine Duplikate gefunden. ${files.length} Dateien geprüft, ${hashedCount} gehasht.` }]
+          content: [{ type: "text", text: t().fc_detect_duplicates.noDuplicates(files.length, hashedCount) }]
         };
       }
 
       const output = [
-        `🔍 **Duplikate gefunden**`, '',
+        t().fc_detect_duplicates.header, '',
         `| | |`, `|---|---|`,
-        `| Geprüfte Dateien | ${files.length} |`,
-        `| Duplikat-Gruppen | ${duplicates.length} |`,
-        `| Duplikate gesamt | ${totalDuplicateFiles} |`,
-        `| Verschwendeter Platz | ${formatFileSize(totalWastedSpace)} |`
+        `| ${t().fc_detect_duplicates.labelChecked} | ${files.length} |`,
+        `| ${t().fc_detect_duplicates.labelGroups} | ${duplicates.length} |`,
+        `| ${t().fc_detect_duplicates.labelDuplicates} | ${totalDuplicateFiles} |`,
+        `| ${t().fc_detect_duplicates.labelWasted} | ${formatFileSize(totalWastedSpace)} |`
       ];
 
       for (let i = 0; i < Math.min(duplicates.length, 20); i++) {
         const group = duplicates[i];
-        output.push('', `**Gruppe ${i + 1}** (${formatFileSize(group.size)}):`);
+        output.push('', t().fc_detect_duplicates.groupHeader(i + 1, formatFileSize(group.size)));
         for (const p of group.paths) {
-          output.push(`  📄 ${path.relative(dirPath, p)}`);
+          output.push(`  \uD83D\uDCC4 ${path.relative(dirPath, p)}`);
         }
       }
 
       if (duplicates.length > 20) {
-        output.push('', `... und ${duplicates.length - 20} weitere Gruppen`);
+        output.push('', t().fc_detect_duplicates.andMoreGroups(duplicates.length - 20));
       }
 
-      output.push('', `💡 Nutze \`fc_safe_delete\` zum sicheren Entfernen von Duplikaten.`);
+      output.push('', t().fc_detect_duplicates.useSafeDelete);
 
       return { content: [{ type: "text", text: output.join('\n') }] };
     } catch (error) {
-      return { isError: true, content: [{ type: "text", text: `❌ Fehler: ${error instanceof Error ? error.message : String(error)}` }] };
+      return { isError: true, content: [{ type: "text", text: t().common.errorGeneric(error instanceof Error ? error.message : String(error)) }] };
     }
   }
 );
@@ -3433,19 +3433,19 @@ Returns:
 server.registerTool(
   "fc_md_to_html",
   {
-    title: "Markdown zu HTML",
-    description: `Konvertiert Markdown zu formatiertem HTML (druckbar als PDF).
+    title: "Markdown to HTML",
+    description: `Converts Markdown to formatted HTML (printable as PDF).
 
 Args:
-  - input_path (string): Pfad zur Markdown-Datei
-  - output_path (string): Pfad zur HTML-Ausgabe
-  - title (string, optional): Dokumenttitel
+  - input_path (string): Path to Markdown file
+  - output_path (string): Path to HTML output
+  - title (string, optional): Document title
 
-Erzeugt eigenstaendiges HTML mit CSS-Styling, druckbar als PDF ueber den Browser.`,
+Generates standalone HTML with CSS styling, printable as PDF via browser.`,
     inputSchema: {
-      input_path: z.string().min(1).describe("Markdown-Datei"),
-      output_path: z.string().min(1).describe("HTML-Ausgabe"),
-      title: z.string().optional().describe("Dokumenttitel")
+      input_path: z.string().min(1).describe("Markdown file"),
+      output_path: z.string().min(1).describe("HTML output"),
+      title: z.string().optional().describe("Document title")
     },
     annotations: {
       readOnlyHint: false,
@@ -3459,7 +3459,7 @@ Erzeugt eigenstaendiges HTML mit CSS-Styling, druckbar als PDF ueber den Browser
       const inputPath = normalizePath(params.input_path);
       const outputPath = normalizePath(params.output_path);
       if (!await pathExists(inputPath)) {
-        return { isError: true, content: [{ type: "text", text: `❌ Datei nicht gefunden: ${inputPath}` }] };
+        return { isError: true, content: [{ type: "text", text: t().common.fileNotFound(inputPath) }] };
       }
 
       const md = await fs.readFile(inputPath, "utf-8");
@@ -3635,17 +3635,31 @@ ${html}
 
       return {
         content: [{ type: "text", text: [
-          `✅ **Markdown → HTML: ${path.basename(outputPath)}**`, '',
+          t().fc_md_to_html.converted(path.basename(outputPath)), '',
           `| | |`, `|---|---|`,
-          `| Quelle | ${inputPath} |`,
-          `| Ziel | ${outputPath} |`,
-          `| Größe | ${formatFileSize(outStats.size)} |`, '',
-          `💡 Öffne die HTML-Datei im Browser und drucke als PDF.`
+          `| ${t().fc_md_to_html.labelSource} | ${inputPath} |`,
+          `| ${t().fc_md_to_html.labelTarget} | ${outputPath} |`,
+          `| ${t().fc_md_to_html.labelSize} | ${formatFileSize(outStats.size)} |`, '',
+          t().fc_md_to_html.openInBrowser
         ].join('\n') }]
       };
     } catch (error) {
-      return { isError: true, content: [{ type: "text", text: `❌ Fehler: ${error instanceof Error ? error.message : String(error)}` }] };
+      return { isError: true, content: [{ type: "text", text: t().common.errorGeneric(error instanceof Error ? error.message : String(error)) }] };
     }
+  }
+);
+
+// ============================================================================
+// Tool: Set Language
+// ============================================================================
+
+server.tool(
+  "fc_set_language",
+  "Set the output language for FileCommander tools",
+  { language: z.enum(["de", "en"]).describe("Language code") },
+  async ({ language }) => {
+    setLanguage(language as Lang);
+    return { content: [{ type: "text", text: t().server.languageSet(language) }] };
   }
 );
 
@@ -3656,7 +3670,7 @@ ${html}
 async function main(): Promise<void> {
   const transport = new StdioServerTransport();
   await server.connect(transport);
-  console.error("🚀 BACH FileCommander MCP Server gestartet");
+  console.error(t().server.started);
 }
 
 main().catch((error) => {
