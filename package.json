@@ -1,6 +1,6 @@
 {
   "name": "bach-filecommander-mcp",
-  "version": "1.7.0",
+  "version": "1.7.1",
   "mcpName": "io.github.lukisch/bach-filecommander-mcp",
   "description": "A comprehensive MCP server providing 43 tools for filesystem operations, process management, interactive sessions, async file search, JSON repair, encoding fix, duplicate detection, OCR, ZIP archives, and Markdown export",
   "type": "module",
@@ -46,6 +46,7 @@
   "homepage": "https://github.com/lukisch/bach-filecommander-mcp#readme",
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.0.0",
+    "@toon-format/toon": "^2.1.0",
     "adm-zip": "^0.5.16",
     "fast-xml-parser": "^5.3.6",
     "js-yaml": "^4.1.1",

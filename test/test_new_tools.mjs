@@ -296,7 +296,7 @@ async function runTests() {
 
       const toonContent = await fs.readFile(toonOut, 'utf-8');
       console.log('  TOON output:\n' + toonContent.split('\n').map(l => '    ' + l).join('\n'));
-      assertIncludes(toonContent, 'name = test', 'TOON contains name = test');
+      assertIncludes(toonContent, 'name: test', 'TOON contains name: test');
 
       // TOON -> JSON
       const r4b = await client.callTool('fc_convert_format', {

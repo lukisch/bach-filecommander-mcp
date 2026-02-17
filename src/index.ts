@@ -30,6 +30,7 @@ import * as yaml from 'js-yaml';
 import * as toml from 'smol-toml';
 import { XMLParser, XMLBuilder } from 'fast-xml-parser';
 import AdmZip from 'adm-zip';
+import { encode as toonEncode, decode as toonDecode } from '@toon-format/toon';
 
 const execAsync = promisify(exec);
 
@@ -92,106 +93,6 @@ function generateSearchId(): string {
 // ============================================================================
 
 let safeMode = false;
-
-// ============================================================================
-// TOON Format Parser/Serializer
-// ============================================================================
-
-function parseToon(content: string): Record<string, any> {
-  const result: Record<string, any> = {};
-  let currentSection = result;
-  let currentPath: string[] = [];
-
-  for (const rawLine of content.split('\n')) {
-    const line = rawLine.trim();
-    if (!line || line.startsWith('#')) continue;
-
-    // Section header [section.subsection]
-    const sectionMatch = line.match(/^\[([^\]]+)\]$/);
-    if (sectionMatch) {
-      currentPath = sectionMatch[1].split('.');
-      currentSection = result;
-      for (const part of currentPath) {
-        if (!currentSection[part]) currentSection[part] = {};
-        currentSection = currentSection[part];
-      }
-      continue;
-    }
-
-    // Key = Value
-    const kvMatch = line.match(/^([^=]+?)\s*=\s*(.*)$/);
-    if (kvMatch) {
-      let key = kvMatch[1].trim();
-      let value: any = kvMatch[2].trim();
-
-      // Array notation: key[] = value
-      const isArray = key.endsWith('[]');
-      if (isArray) key = key.slice(0, -2).trim();
-
-      // Parse value
-      if (value === 'true') value = true;
-      else if (value === 'false') value = false;
-      else if (value === 'null') value = null;
-      else if (/^-?\d+$/.test(value)) value = parseInt(value, 10);
-      else if (/^-?\d+\.\d+$/.test(value)) value = parseFloat(value);
-      else if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
-        value = value.slice(1, -1);
-      }
-
-      if (isArray) {
-        if (!Array.isArray(currentSection[key])) currentSection[key] = [];
-        currentSection[key].push(value);
-      } else {
-        currentSection[key] = value;
-      }
-    }
-  }
-  return result;
-}
-
-function formatToonValue(value: any): string {
-  if (value === null) return 'null';
-  if (typeof value === 'boolean') return value ? 'true' : 'false';
-  if (typeof value === 'number') return String(value);
-  const str = String(value);
-  if (str.includes('=') || str.includes('#') || str.includes('[') || str.includes('\n')) {
-    return `"${str.replace(/"/g, '\\"')}"`;
-  }
-  return str;
-}
-
-function serializeToon(obj: Record<string, any>, prefix: string = ''): string {
-  let lines: string[] = [];
-  const simple: [string, any][] = [];
-  const complex: [string, any][] = [];
-
-  for (const [key, value] of Object.entries(obj)) {
-    if (value !== null && typeof value === 'object' && !Array.isArray(value)) {
-      complex.push([key, value]);
-    } else {
-      simple.push([key, value]);
-    }
-  }
-
-  for (const [key, value] of simple) {
-    if (Array.isArray(value)) {
-      for (const item of value) {
-        lines.push(`${key}[] = ${formatToonValue(item)}`);
-      }
-    } else {
-      lines.push(`${key} = ${formatToonValue(value)}`);
-    }
-  }
-
-  for (const [key, value] of complex) {
-    const sectionPath = prefix ? `${prefix}.${key}` : key;
-    lines.push('');
-    lines.push(`[${sectionPath}]`);
-    lines.push(serializeToon(value, sectionPath));
-  }
-
-  return lines.join('\n');
-}
 
 /**
  * Asynchrone rekursive Suche mit AbortController
@@ -3406,7 +3307,7 @@ Supported conversions:
           break;
         }
         case 'toon':
-          data = parseToon(rawContent);
+          data = toonDecode(rawContent);
           break;
       }
 
@@ -3464,10 +3365,7 @@ Supported conversions:
           break;
         }
         case 'toon': {
-          if (typeof data !== 'object' || data === null || Array.isArray(data)) {
-            return { isError: true, content: [{ type: "text", text: t().fc_convert_format.unsupportedFormat('TOON requires an object as root') }] };
-          }
-          output = serializeToon(data as Record<string, any>);
+          output = toonEncode(data);
           break;
         }
       }
