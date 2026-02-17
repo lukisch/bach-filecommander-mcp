@@ -415,6 +415,16 @@ export const de: Translations = {
     openInBrowser: `\uD83D\uDCA1 \u00d6ffne die HTML-Datei im Browser und drucke als PDF.`,
   },
 
+  // ==================== fc_md_to_pdf ====================
+  fc_md_to_pdf: {
+    converted: (name) => `\u2705 **Markdown \u2192 PDF: ${name}**`,
+    labelSource: 'Quelle',
+    labelTarget: 'Ziel',
+    labelSize: 'Groesse',
+    noBrowser: 'Kein Browser (Edge/Chrome) gefunden. HTML-Datei wurde stattdessen erstellt.',
+    browserUsed: (name) => `PDF erstellt mit ${name}`,
+  },
+
   // ==================== Server ====================
   server: {
     started: '\uD83D\uDE80 BACH FileCommander MCP Server gestartet',

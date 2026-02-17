@@ -9,7 +9,7 @@
  * See LICENSE file for details.
  *
  * @author Lukas (BACH)
- * @version 1.4.0
+ * @version 1.6.0
  * @license MIT
  */
 
@@ -23,7 +23,7 @@ import * as fsSync from "fs";
 import * as path from "path";
 import * as crypto from "crypto";
 import * as os from "os";
-import { exec, spawn } from "child_process";
+import { exec, execSync, spawn } from "child_process";
 import { promisify } from "util";
 
 const execAsync = promisify(exec);
@@ -34,7 +34,7 @@ const execAsync = promisify(exec);
 
 const server = new McpServer({
   name: "bach-filecommander-mcp",
-  version: "1.5.0"
+  version: "1.6.0"
 });
 
 // ============================================================================
@@ -3427,6 +3427,35 @@ Returns:
 );
 
 // ============================================================================
+// Helper: Browser Detection for PDF generation
+// ============================================================================
+
+function findBrowser(): string | null {
+  const candidates = process.platform === 'win32' ? [
+    'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe',
+    'C:\\Program Files\\Microsoft\\Edge\\Application\\msedge.exe',
+    'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
+    'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe',
+  ] : process.platform === 'darwin' ? [
+    '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
+    '/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge',
+  ] : [];
+
+  for (const p of candidates) {
+    if (fsSync.existsSync(p)) return p;
+  }
+  if (process.platform === 'linux') {
+    for (const cmd of ['google-chrome', 'chromium-browser', 'chromium', 'microsoft-edge']) {
+      try {
+        const result = execSync(`which ${cmd}`, { encoding: 'utf-8' }).trim();
+        if (result) return result;
+      } catch {}
+    }
+  }
+  return null;
+}
+
+// ============================================================================
 // Tool: Markdown to HTML
 // ============================================================================
 
@@ -3643,6 +3672,259 @@ ${html}
           t().fc_md_to_html.openInBrowser
         ].join('\n') }]
       };
+    } catch (error) {
+      return { isError: true, content: [{ type: "text", text: t().common.errorGeneric(error instanceof Error ? error.message : String(error)) }] };
+    }
+  }
+);
+
+// ============================================================================
+// Tool: Markdown to PDF
+// ============================================================================
+
+server.registerTool(
+  "fc_md_to_pdf",
+  {
+    title: "Markdown to PDF",
+    description: `Converts Markdown to PDF using a headless browser (Edge/Chrome).
+
+Args:
+  - input_path (string): Path to the Markdown file
+  - output_path (string): Path to the PDF output
+  - title (string, optional): Document title
+
+Uses the same Markdown parser as fc_md_to_html. Requires Edge or Chrome.
+Falls back to HTML if no browser is found.`,
+    inputSchema: {
+      input_path: z.string().min(1).describe("Markdown file"),
+      output_path: z.string().min(1).describe("PDF output"),
+      title: z.string().optional().describe("Document title")
+    },
+    annotations: {
+      readOnlyHint: false,
+      destructiveHint: false,
+      idempotentHint: true,
+      openWorldHint: false
+    }
+  },
+  async (params) => {
+    try {
+      const inputPath = normalizePath(params.input_path);
+      const outputPath = normalizePath(params.output_path);
+      if (!await pathExists(inputPath)) {
+        return { isError: true, content: [{ type: "text", text: t().common.fileNotFound(inputPath) }] };
+      }
+
+      const md = await fs.readFile(inputPath, "utf-8");
+      const title = params.title || path.basename(inputPath, '.md');
+
+      // --- Inline formatting ---
+      const inlineFmt = (text: string): string => {
+        text = text.replace(/`([^`]+)`/g, '<code>$1</code>');
+        text = text.replace(/\*\*\*(.+?)\*\*\*/g, '<strong><em>$1</em></strong>');
+        text = text.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+        text = text.replace(/(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)/g, '<em>$1</em>');
+        text = text.replace(/\[!\[([^\]]*)\]\(([^)]+)\)\]\(([^)]+)\)/g, '<a href="$3"><img src="$2" alt="$1"></a>');
+        text = text.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img src="$2" alt="$1">');
+        text = text.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2">$1</a>');
+        text = text.replace(/\[x\]/gi, '&#9745;');
+        text = text.replace(/\[ \]/g, '&#9744;');
+        return text;
+      };
+
+      // --- Table parser ---
+      const parseTable = (tableLines: string[]): string => {
+        if (tableLines.length < 2) return `<p>${inlineFmt(tableLines[0])}</p>`;
+        const rows = tableLines.map(tl => tl.replace(/^\||\|$/g, '').split('|').map(c => c.trim()));
+        let out = '<table>\n<thead>\n<tr>';
+        for (const cell of rows[0]) out += `<th>${inlineFmt(cell)}</th>`;
+        out += '</tr>\n</thead>\n<tbody>\n';
+        for (let r = 2; r < rows.length; r++) {
+          out += '<tr>';
+          for (const cell of rows[r]) out += `<td>${inlineFmt(cell)}</td>`;
+          out += '</tr>\n';
+        }
+        out += '</tbody>\n</table>';
+        return out;
+      };
+
+      // --- List parser (nested, ordered + unordered) ---
+      const parseList = (allLines: string[], start: number): [string, number] => {
+        const result: string[] = [];
+        const stack: string[] = [];
+        let li = start;
+        while (li < allLines.length) {
+          const lline = allLines[li].trimEnd();
+          const lm = lline.match(/^(\s*)([-*]|\d+\.)\s+(.+)$/);
+          if (!lm) break;
+          const indent = lm[1].length;
+          const marker = lm[2];
+          const content = inlineFmt(lm[3]);
+          const tag = /^\d/.test(marker) ? 'ol' : 'ul';
+          const depth = Math.floor(indent / 2);
+          while (stack.length > depth + 1) result.push(`</${stack.pop()}>`);
+          while (stack.length <= depth) { result.push(`<${tag}>`); stack.push(tag); }
+          result.push(`<li>${content}</li>`);
+          li++;
+        }
+        while (stack.length > 0) result.push(`</${stack.pop()}>`);
+        return [result.join('\n'), li];
+      };
+
+      // --- Line-by-line parser ---
+      const lines = md.split('\n');
+      const parts: string[] = [];
+      let i = 0;
+      const n = lines.length;
+
+      while (i < n) {
+        const line = lines[i].trimEnd();
+
+        if (line.trimStart().startsWith('```')) {
+          const lang = line.trim().slice(3).trim();
+          const codeLines: string[] = [];
+          i++;
+          while (i < n && !lines[i].trimEnd().trimStart().startsWith('```')) {
+            codeLines.push(lines[i].trimEnd().replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'));
+            i++;
+          }
+          i++;
+          parts.push(`<pre><code class="language-${lang}">${codeLines.join('\n')}</code></pre>`);
+          continue;
+        }
+
+        if (line.includes('|') && line.trim().startsWith('|') && line.trim().endsWith('|')) {
+          const tableLines: string[] = [];
+          while (i < n && lines[i].includes('|') && lines[i].trim().startsWith('|')) {
+            tableLines.push(lines[i].trim());
+            i++;
+          }
+          parts.push(parseTable(tableLines));
+          continue;
+        }
+
+        if (line.startsWith('>')) {
+          const bqLines: string[] = [];
+          while (i < n && lines[i].trimEnd().startsWith('>')) {
+            bqLines.push(inlineFmt(lines[i].trimEnd().replace(/^>\s*/, '')));
+            i++;
+          }
+          parts.push(`<blockquote><p>${bqLines.join('<br>')}</p></blockquote>`);
+          continue;
+        }
+
+        if (line.trim() === '') { i++; continue; }
+        if (/^(-{3,}|={3,}|\*{3,})$/.test(line.trim())) { parts.push('<hr>'); i++; continue; }
+
+        const hm = line.match(/^(#{1,6})\s+(.+)$/);
+        if (hm) {
+          const lvl = hm[1].length;
+          parts.push(`<h${lvl}>${inlineFmt(hm[2])}</h${lvl}>`);
+          i++;
+          continue;
+        }
+
+        if (/^(\s*)([-*]|\d+\.)\s+/.test(line)) {
+          const [listHtml, nextI] = parseList(lines, i);
+          parts.push(listHtml);
+          i = nextI;
+          continue;
+        }
+
+        parts.push(`<p>${inlineFmt(line)}</p>`);
+        i++;
+      }
+
+      const html = parts.join('\n');
+
+      const fullHtml = `<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <title>${title}</title>
+  <style>
+    body { font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, sans-serif; max-width: 800px; margin: 40px auto; padding: 0 20px; line-height: 1.7; color: #2c3e50; font-size: 11pt; }
+    h1 { color: #1a252f; border-bottom: 3px solid #3498db; padding-bottom: 12px; font-size: 22pt; }
+    h2 { color: #2c3e50; border-bottom: 1px solid #bdc3c7; padding-bottom: 6px; margin-top: 28px; font-size: 16pt; }
+    h3 { color: #34495e; margin-top: 22px; font-size: 13pt; }
+    h4 { color: #7f8c8d; margin-top: 18px; font-size: 11pt; font-style: italic; }
+    p { margin: 8px 0; }
+    code { background: #f0f3f5; padding: 2px 6px; border-radius: 4px; font-family: 'Cascadia Code', Consolas, 'Courier New', monospace; font-size: 0.9em; color: #c0392b; }
+    pre { background: #1e1e2e; color: #cdd6f4; padding: 16px 20px; border-radius: 8px; overflow-x: auto; font-size: 9.5pt; line-height: 1.5; margin: 14px 0; }
+    pre code { background: none; color: inherit; padding: 0; font-size: inherit; }
+    blockquote { border-left: 4px solid #3498db; margin: 16px 0; padding: 10px 20px; background: #f8f9fa; color: #555; border-radius: 0 6px 6px 0; }
+    blockquote p { margin: 4px 0; }
+    table { border-collapse: collapse; width: 100%; margin: 16px 0; font-size: 10pt; }
+    th { background: #2c3e50; color: white; padding: 10px 14px; text-align: left; font-weight: 600; }
+    td { border: 1px solid #ddd; padding: 8px 14px; }
+    tr:nth-child(even) { background: #f8f9fa; }
+    ul, ol { margin: 6px 0; padding-left: 24px; }
+    li { margin: 4px 0; }
+    hr { border: none; border-top: 1px solid #e0e0e0; margin: 24px 0; }
+    a { color: #2980b9; text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    img { max-width: 100%; }
+    @media print { body { max-width: none; margin: 0; } @page { margin: 2cm 2.5cm; size: A4; } }
+  </style>
+</head>
+<body>
+${html}
+</body>
+</html>`;
+
+      // Write temp HTML
+      const tempHtml = outputPath.replace(/\.pdf$/i, '.tmp.html');
+      const outDir = path.dirname(outputPath);
+      if (!await pathExists(outDir)) await fs.mkdir(outDir, { recursive: true });
+      await fs.writeFile(tempHtml, fullHtml, "utf-8");
+
+      const browser = findBrowser();
+      if (!browser) {
+        // Fallback: save as HTML instead of PDF
+        const htmlFallback = outputPath.replace(/\.pdf$/i, '.html');
+        await fs.rename(tempHtml, htmlFallback);
+        const outStats = await fs.stat(htmlFallback);
+        return { content: [{ type: "text", text: [
+          t().fc_md_to_pdf.converted(path.basename(htmlFallback)), '',
+          `| | |`, `|---|---|`,
+          `| ${t().fc_md_to_pdf.labelSource} | ${inputPath} |`,
+          `| ${t().fc_md_to_pdf.labelTarget} | ${htmlFallback} |`,
+          `| ${t().fc_md_to_pdf.labelSize} | ${formatFileSize(outStats.size)} |`, '',
+          t().fc_md_to_pdf.noBrowser
+        ].join('\n') }] };
+      }
+
+      try {
+        const fileUrl = `file:///${tempHtml.replace(/\\/g, '/')}`;
+        execSync(`"${browser}" --headless --disable-gpu --print-to-pdf="${outputPath}" --no-pdf-header-footer "${fileUrl}"`, { timeout: 30000 });
+      } catch (browserError) {
+        // If browser fails, keep HTML as fallback
+        const htmlFallback = outputPath.replace(/\.pdf$/i, '.html');
+        await fs.rename(tempHtml, htmlFallback);
+        const outStats = await fs.stat(htmlFallback);
+        return { content: [{ type: "text", text: [
+          t().fc_md_to_pdf.converted(path.basename(htmlFallback)), '',
+          `| | |`, `|---|---|`,
+          `| ${t().fc_md_to_pdf.labelSource} | ${inputPath} |`,
+          `| ${t().fc_md_to_pdf.labelTarget} | ${htmlFallback} |`,
+          `| ${t().fc_md_to_pdf.labelSize} | ${formatFileSize(outStats.size)} |`, '',
+          t().fc_md_to_pdf.noBrowser
+        ].join('\n') }] };
+      }
+
+      // Clean up temp HTML
+      try { await fs.unlink(tempHtml); } catch {}
+
+      const outStats = await fs.stat(outputPath);
+      const browserName = path.basename(browser).replace(/\.exe$/i, '');
+      return { content: [{ type: "text", text: [
+        t().fc_md_to_pdf.converted(path.basename(outputPath)), '',
+        `| | |`, `|---|---|`,
+        `| ${t().fc_md_to_pdf.labelSource} | ${inputPath} |`,
+        `| ${t().fc_md_to_pdf.labelTarget} | ${outputPath} |`,
+        `| ${t().fc_md_to_pdf.labelSize} | ${formatFileSize(outStats.size)} |`, '',
+        t().fc_md_to_pdf.browserUsed(browserName)
+      ].join('\n') }] };
     } catch (error) {
       return { isError: true, content: [{ type: "text", text: t().common.errorGeneric(error instanceof Error ? error.message : String(error)) }] };
     }

@@ -6,7 +6,7 @@
 
 A comprehensive **Model Context Protocol (MCP) server** that gives AI assistants full filesystem access, process management, interactive shell sessions, and async file search capabilities.
 
-**38 tools** in a single server - everything an AI agent needs to interact with the local system.
+**39 tools** in a single server - everything an AI agent needs to interact with the local system.
 
 ---
 
@@ -159,13 +159,14 @@ The server communicates via **stdio transport**. Point your MCP client to the `d
 |------|-------------|
 | `fc_get_time` | Get current system time with timezone info |
 
-### Export (1 tool) - NEW in v1.4.0
+### Export (2 tools)
 
 | Tool | Description |
 |------|-------------|
-| `fc_md_to_html` | Markdown to HTML: headers, code blocks, tables, nested lists, blockquotes, images, checkboxes |
+| `fc_md_to_html` | Markdown to standalone HTML with CSS styling (headers, code blocks, tables, nested lists, blockquotes, images, checkboxes) |
+| `fc_md_to_pdf` | Markdown to PDF via headless browser (Edge/Chrome). Falls back to HTML if no browser is available |
 
-**Total: 38 tools**
+**Total: 39 tools**
 
 ---
 
@@ -188,17 +189,17 @@ The server communicates via **stdio transport**. Point your MCP client to the `d
 | Batch rename (pattern-based) | Yes | No | No |
 | Format conversion (JSON/CSV/INI) | Yes | No | No |
 | Path allowlist / sandboxing | No | No | Yes |
-| Excel / PDF support | No | Yes | No |
+| Excel / PDF support | PDF (via browser) | Yes | No |
 | HTTP transport | No | No | No |
-| Markdown to HTML export | Yes | No | No |
-| **Total tools** | **38** | ~15 | ~11 |
+| Markdown to HTML/PDF export | Yes | No | No |
+| **Total tools** | **39** | ~15 | ~11 |
 | **Servers needed** | **1** | 1 | + extra for processes |
 
 **Key differentiators:**
 - Only MCP server with **recoverable delete** (Recycle Bin / Trash)
 - Only MCP server with **async background search** with pagination
 - Built-in **JSON repair**, **encoding fix**, and **duplicate detection**
-- Most comprehensive single-server solution (38 tools)
+- Most comprehensive single-server solution (39 tools)
 
 ---
 

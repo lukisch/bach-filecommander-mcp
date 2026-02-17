@@ -417,6 +417,16 @@ export interface Translations {
     openInBrowser: string;
   };
 
+  // ==================== fc_md_to_pdf ====================
+  fc_md_to_pdf: {
+    converted: (name: string) => string;
+    labelSource: string;
+    labelTarget: string;
+    labelSize: string;
+    noBrowser: string;
+    browserUsed: (name: string) => string;
+  };
+
   // ==================== Server ====================
   server: {
     started: string;
