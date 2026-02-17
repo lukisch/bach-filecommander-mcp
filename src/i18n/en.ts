@@ -387,6 +387,7 @@ export const en: Translations = {
     csvNeedsRows: `\u274C CSV needs at least a header + 1 data row.`,
     csvNeedsArray: `\u274C CSV export requires a JSON array of objects.`,
     iniNeedsObject: `\u274C INI export requires a JSON object.`,
+    unsupportedFormat: (format) => `\u274C Unsupported format: ${format}`,
     converted: (from, to) => `\u2705 **Converted: ${from} \u2192 ${to}**`,
     labelSource: 'Source',
     labelTarget: 'Target',
@@ -423,6 +424,47 @@ export const en: Translations = {
     labelSize: 'Size',
     noBrowser: 'No browser (Edge/Chrome) found. HTML file was created instead.',
     browserUsed: (name) => `PDF created with ${name}`,
+  },
+
+  // ==================== fc_ocr ====================
+  fc_ocr: {
+    description: 'Extracts text from images (JPG/PNG/BMP/TIFF) using OCR (Tesseract).',
+    notInstalled: '\u274C tesseract.js is not installed. Install with: npm install tesseract.js',
+    unsupportedFormat: (ext) => `\u274C Unsupported file format for OCR: ${ext}`,
+    pdfNotYetSupported: '\u274C PDF OCR is not yet supported. Please convert PDF pages to images first.',
+    header: (filename) => `\uD83D\uDD0D **OCR Result: ${filename}**`,
+    labelLanguage: 'Language',
+    labelConfidence: 'Confidence',
+    labelChars: 'Characters',
+    labelSaved: 'Saved to',
+  },
+
+  // ==================== fc_archive ====================
+  fc_archive: {
+    description: 'Creates, extracts, and lists ZIP archives.',
+    created: (p) => `\u2705 **ZIP archive created:** ${p}`,
+    extracted: (archive, target) => `\u2705 **Extracted:** ${archive} \u2192 ${target}`,
+    listHeader: (p) => `\uD83D\uDCC2 **Archive contents: ${p}**`,
+    labelSize: 'Size',
+    labelFiles: 'Files',
+  },
+
+  // ==================== fc_checksum ====================
+  fc_checksum: {
+    description: 'Calculates checksums (MD5/SHA1/SHA256/SHA512) for files.',
+    header: (filename) => `\uD83D\uDD10 **Checksum: ${filename}**`,
+    labelAlgorithm: 'Algorithm',
+    labelHash: 'Hash',
+    match: '\u2705 Checksums match!',
+    mismatch: '\u274C Checksums do NOT match!',
+  },
+
+  // ==================== fc_set_safe_mode ====================
+  fc_set_safe_mode: {
+    description: 'Enables/disables Safe Mode. When active, all delete operations (fc_delete_file, fc_delete_directory) are redirected to the recycle bin.',
+    enabled: '\uD83D\uDEE1\uFE0F **Safe Mode enabled.** All delete operations now use the recycle bin.',
+    disabled: '\u26A0\uFE0F **Safe Mode disabled.** Delete operations are now permanent.',
+    redirected: (originalAction) => `\uD83D\uDEE1\uFE0F Safe Mode active: ${originalAction} was redirected to the recycle bin.`,
   },
 
   // ==================== Server ====================

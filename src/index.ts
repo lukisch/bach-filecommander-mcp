@@ -9,7 +9,7 @@
  * See LICENSE file for details.
  *
  * @author Lukas (BACH)
- * @version 1.6.0
+ * @version 1.7.0
  * @license MIT
  */
 
@@ -22,9 +22,14 @@ import * as fs from "fs/promises";
 import * as fsSync from "fs";
 import * as path from "path";
 import * as crypto from "crypto";
+import { createHash } from "crypto";
 import * as os from "os";
 import { exec, execSync, spawn } from "child_process";
 import { promisify } from "util";
+import * as yaml from 'js-yaml';
+import * as toml from 'smol-toml';
+import { XMLParser, XMLBuilder } from 'fast-xml-parser';
+import AdmZip from 'adm-zip';
 
 const execAsync = promisify(exec);
 
@@ -34,7 +39,7 @@ const execAsync = promisify(exec);
 
 const server = new McpServer({
   name: "bach-filecommander-mcp",
-  version: "1.6.0"
+  version: "1.7.0"
 });
 
 // ============================================================================
@@ -82,6 +87,112 @@ function generateSearchId(): string {
   return `search_${++searchCounter}_${Date.now()}`;
 }
 
+// ============================================================================
+// Safe Mode (global toggle)
+// ============================================================================
+
+let safeMode = false;
+
+// ============================================================================
+// TOON Format Parser/Serializer
+// ============================================================================
+
+function parseToon(content: string): Record<string, any> {
+  const result: Record<string, any> = {};
+  let currentSection = result;
+  let currentPath: string[] = [];
+
+  for (const rawLine of content.split('\n')) {
+    const line = rawLine.trim();
+    if (!line || line.startsWith('#')) continue;
+
+    // Section header [section.subsection]
+    const sectionMatch = line.match(/^\[([^\]]+)\]$/);
+    if (sectionMatch) {
+      currentPath = sectionMatch[1].split('.');
+      currentSection = result;
+      for (const part of currentPath) {
+        if (!currentSection[part]) currentSection[part] = {};
+        currentSection = currentSection[part];
+      }
+      continue;
+    }
+
+    // Key = Value
+    const kvMatch = line.match(/^([^=]+?)\s*=\s*(.*)$/);
+    if (kvMatch) {
+      let key = kvMatch[1].trim();
+      let value: any = kvMatch[2].trim();
+
+      // Array notation: key[] = value
+      const isArray = key.endsWith('[]');
+      if (isArray) key = key.slice(0, -2).trim();
+
+      // Parse value
+      if (value === 'true') value = true;
+      else if (value === 'false') value = false;
+      else if (value === 'null') value = null;
+      else if (/^-?\d+$/.test(value)) value = parseInt(value, 10);
+      else if (/^-?\d+\.\d+$/.test(value)) value = parseFloat(value);
+      else if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
+        value = value.slice(1, -1);
+      }
+
+      if (isArray) {
+        if (!Array.isArray(currentSection[key])) currentSection[key] = [];
+        currentSection[key].push(value);
+      } else {
+        currentSection[key] = value;
+      }
+    }
+  }
+  return result;
+}
+
+function formatToonValue(value: any): string {
+  if (value === null) return 'null';
+  if (typeof value === 'boolean') return value ? 'true' : 'false';
+  if (typeof value === 'number') return String(value);
+  const str = String(value);
+  if (str.includes('=') || str.includes('#') || str.includes('[') || str.includes('\n')) {
+    return `"${str.replace(/"/g, '\\"')}"`;
+  }
+  return str;
+}
+
+function serializeToon(obj: Record<string, any>, prefix: string = ''): string {
+  let lines: string[] = [];
+  const simple: [string, any][] = [];
+  const complex: [string, any][] = [];
+
+  for (const [key, value] of Object.entries(obj)) {
+    if (value !== null && typeof value === 'object' && !Array.isArray(value)) {
+      complex.push([key, value]);
+    } else {
+      simple.push([key, value]);
+    }
+  }
+
+  for (const [key, value] of simple) {
+    if (Array.isArray(value)) {
+      for (const item of value) {
+        lines.push(`${key}[] = ${formatToonValue(item)}`);
+      }
+    } else {
+      lines.push(`${key} = ${formatToonValue(value)}`);
+    }
+  }
+
+  for (const [key, value] of complex) {
+    const sectionPath = prefix ? `${prefix}.${key}` : key;
+    lines.push('');
+    lines.push(`[${sectionPath}]`);
+    lines.push(serializeToon(value, sectionPath));
+  }
+
+  return lines.join('\n');
+}
+
 /**
  * Asynchrone rekursive Suche mit AbortController
  */
@@ -121,6 +232,45 @@ async function asyncSearchFiles(
 // ============================================================================
 // Helper Functions
 // ============================================================================
+
+/**
+ * Verschiebt eine Datei/Verzeichnis in den Papierkorb (Windows) oder ~/.Trash (Unix).
+ * Wiederverwendbare Funktion fuer fc_safe_delete und Safe Mode.
+ */
+async function moveToTrash(targetPath: string): Promise<string> {
+  const stats = await fs.stat(targetPath);
+  const isWindows = process.platform === 'win32';
+
+  if (isWindows) {
+    const escapedPath = targetPath.replace(/'/g, "''");
+    const deleteMethod = stats.isDirectory() ? 'DeleteDirectory' : 'DeleteFile';
+    const psCommand = `Add-Type -AssemblyName Microsoft.VisualBasic; [Microsoft.VisualBasic.FileIO.FileSystem]::${deleteMethod}('${escapedPath}', 'OnlyErrorDialogs', 'SendToRecycleBin')`;
+    const windowsShell = getWindowsShell();
+    if (windowsShell.includes('powershell')) {
+      await execAsync(`"${windowsShell}" -Command "${psCommand}"`);
+    } else {
+      // cmd.exe kann kein PowerShell - normales Loeschen als Fallback
+      if (stats.isDirectory()) {
+        await fs.rm(targetPath, { recursive: true });
+      } else {
+        await fs.unlink(targetPath);
+      }
+    }
+    return ''; // Windows Papierkorb, kein expliziter Pfad
+  } else {
+    const trashDir = path.join(process.env.HOME || '/tmp', '.Trash');
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+    const baseName = path.basename(targetPath);
+    const trashPath = path.join(trashDir, `${baseName}_${timestamp}`);
+    try {
+      await fs.access(trashDir);
+    } catch {
+      await fs.mkdir(trashDir, { recursive: true });
+    }
+    await fs.rename(targetPath, trashPath);
+    return trashPath;
+  }
+}
 
 /**
  * Normalisiert Pfade für Windows/Unix Kompatibilität
@@ -624,7 +774,7 @@ Warning: Irreversible! No recycle bin.`,
   async (params) => {
     try {
       const filePath = normalizePath(params.path);
-      
+
       if (!await pathExists(filePath)) {
         return {
           isError: true,
@@ -637,6 +787,14 @@ Warning: Irreversible! No recycle bin.`,
         return {
           isError: true,
           content: [{ type: "text", text: t().common.pathIsDirectoryUseDeleteDir }]
+        };
+      }
+
+      // Safe Mode: redirect to recycle bin
+      if (safeMode) {
+        await moveToTrash(filePath);
+        return {
+          content: [{ type: "text", text: t().fc_set_safe_mode.redirected('fc_delete_file') + `\n${t().fc_safe_delete.propPath}: ${filePath}` }]
         };
       }
 
@@ -684,7 +842,7 @@ Warning: With recursive=true ALL contents are irreversibly deleted!`,
   async (params) => {
     try {
       const dirPath = normalizePath(params.path);
-      
+
       if (!await pathExists(dirPath)) {
         return {
           isError: true,
@@ -697,6 +855,14 @@ Warning: With recursive=true ALL contents are irreversibly deleted!`,
         return {
           isError: true,
           content: [{ type: "text", text: t().common.pathIsNotDirectory(dirPath) }]
+        };
+      }
+
+      // Safe Mode: redirect to recycle bin
+      if (safeMode) {
+        await moveToTrash(dirPath);
+        return {
+          content: [{ type: "text", text: t().fc_set_safe_mode.redirected('fc_delete_directory') + `\n${t().fc_safe_delete.propPath}: ${dirPath}` }]
         };
       }
 
@@ -3147,19 +3313,23 @@ server.registerTool(
 Args:
   - input_path (string): Path to source file
   - output_path (string): Path to target file
-  - input_format (string): "json" | "csv" | "ini"
-  - output_format (string): "json" | "csv" | "ini"
+  - input_format (string): "json" | "csv" | "ini" | "yaml" | "toml" | "xml" | "toon"
+  - output_format (string): "json" | "csv" | "ini" | "yaml" | "toml" | "xml" | "toon"
   - json_indent (number, optional): JSON indentation (default: 2)
 
 Supported conversions:
   - JSON <-> CSV (for arrays of objects)
   - JSON <-> INI (for flat objects/sections)
+  - JSON <-> YAML
+  - JSON <-> TOML
+  - JSON <-> XML
+  - JSON <-> TOON (hierarchical key-value format)
   - JSON pretty-print / minify`,
     inputSchema: {
       input_path: z.string().min(1).describe("Source file"),
       output_path: z.string().min(1).describe("Target file"),
-      input_format: z.enum(["json", "csv", "ini"]).describe("Input format"),
-      output_format: z.enum(["json", "csv", "ini"]).describe("Output format"),
+      input_format: z.enum(["json", "csv", "ini", "yaml", "toml", "xml", "toon"]).describe("Input format"),
+      output_format: z.enum(["json", "csv", "ini", "yaml", "toml", "xml", "toon"]).describe("Output format"),
       json_indent: z.number().int().min(0).max(8).default(2).describe("JSON indentation")
     },
     annotations: {
@@ -3224,6 +3394,20 @@ Supported conversions:
           data = result;
           break;
         }
+        case 'yaml':
+          data = yaml.load(rawContent);
+          break;
+        case 'toml':
+          data = toml.parse(rawContent);
+          break;
+        case 'xml': {
+          const xmlParser = new XMLParser({ ignoreAttributes: false, attributeNamePrefix: '@_' });
+          data = xmlParser.parse(rawContent);
+          break;
+        }
+        case 'toon':
+          data = parseToon(rawContent);
+          break;
       }
 
       // Generate output
@@ -3263,6 +3447,27 @@ Supported conversions:
             }
           }
           output = lines.join('\n');
+          break;
+        }
+        case 'yaml':
+          output = yaml.dump(data, { indent: 2, lineWidth: 120 });
+          break;
+        case 'toml':
+          if (typeof data !== 'object' || data === null || Array.isArray(data)) {
+            return { isError: true, content: [{ type: "text", text: t().fc_convert_format.unsupportedFormat('TOML requires an object as root') }] };
+          }
+          output = toml.stringify(data as Record<string, any>);
+          break;
+        case 'xml': {
+          const xmlBuilder = new XMLBuilder({ ignoreAttributes: false, attributeNamePrefix: '@_', format: true });
+          output = xmlBuilder.build(data);
+          break;
+        }
+        case 'toon': {
+          if (typeof data !== 'object' || data === null || Array.isArray(data)) {
+            return { isError: true, content: [{ type: "text", text: t().fc_convert_format.unsupportedFormat('TOON requires an object as root') }] };
+          }
+          output = serializeToon(data as Record<string, any>);
           break;
         }
       }
@@ -3928,6 +4133,191 @@ ${html}
     } catch (error) {
       return { isError: true, content: [{ type: "text", text: t().common.errorGeneric(error instanceof Error ? error.message : String(error)) }] };
     }
+  }
+);
+
+// ============================================================================
+// Tool: OCR - Text from Image
+// ============================================================================
+
+server.registerTool(
+  "fc_ocr",
+  {
+    title: "OCR - Text from Image/PDF",
+    description: t().fc_ocr.description,
+    inputSchema: {
+      file_path: z.string().min(1).describe("Path to image (jpg/png/bmp/tiff) or PDF file"),
+      language: z.string().default("eng").describe("OCR language (default: eng). Use deu for German, fra for French, etc."),
+      output_path: z.string().optional().describe("Optional: Save extracted text to file"),
+    },
+    annotations: {
+      title: "OCR",
+      readOnlyHint: true,
+      openWorldHint: false
+    }
+  },
+  async (params) => {
+    let Tesseract: any;
+    try {
+      Tesseract = await (Function('return import("tesseract.js")')());
+    } catch {
+      return { content: [{ type: "text" as const, text: t().fc_ocr.notInstalled }] };
+    }
+
+    const filePath = normalizePath(params.file_path);
+    const ext = path.extname(filePath).toLowerCase();
+    if (!['.jpg', '.jpeg', '.png', '.bmp', '.tiff', '.tif', '.pdf'].includes(ext)) {
+      throw new Error(t().fc_ocr.unsupportedFormat(ext));
+    }
+
+    if (ext === '.pdf') {
+      return { content: [{ type: "text" as const, text: t().fc_ocr.pdfNotYetSupported }] };
+    }
+
+    const worker = await Tesseract.createWorker(params.language);
+    const result = await worker.recognize(filePath);
+    await worker.terminate();
+
+    const text = result.data.text;
+
+    if (params.output_path) {
+      await fs.writeFile(params.output_path, text, 'utf-8');
+    }
+
+    let response = `${t().fc_ocr.header(path.basename(filePath))}\n`;
+    response += `${t().fc_ocr.labelLanguage}: ${params.language}\n`;
+    response += `${t().fc_ocr.labelConfidence}: ${(result.data.confidence).toFixed(1)}%\n`;
+    response += `${t().fc_ocr.labelChars}: ${text.length}\n`;
+    if (params.output_path) response += `${t().fc_ocr.labelSaved}: ${params.output_path}\n`;
+    response += `\n---\n${text}`;
+
+    return { content: [{ type: "text" as const, text: response }] };
+  }
+);
+
+// ============================================================================
+// Tool: Archive (ZIP)
+// ============================================================================
+
+server.registerTool(
+  "fc_archive",
+  {
+    title: "Archive (ZIP)",
+    description: t().fc_archive.description,
+    inputSchema: {
+      action: z.enum(["create", "extract", "list"]).describe("Action to perform"),
+      archive_path: z.string().min(1).describe("Path to the ZIP archive"),
+      source_paths: z.array(z.string()).optional().describe("Files/folders to add (for create action)"),
+      extract_to: z.string().optional().describe("Extraction target directory (for extract action)"),
+    },
+    annotations: {
+      title: "Archive",
+      readOnlyHint: false,
+      openWorldHint: false
+    }
+  },
+  async (params) => {
+    const archivePath = normalizePath(params.archive_path);
+
+    if (params.action === 'create') {
+      if (!params.source_paths || params.source_paths.length === 0) throw new Error('source_paths required for create');
+      const zip = new AdmZip();
+      for (const src of params.source_paths) {
+        const srcPath = normalizePath(src);
+        const stat = await fs.stat(srcPath);
+        if (stat.isDirectory()) {
+          zip.addLocalFolder(srcPath, path.basename(srcPath));
+        } else {
+          zip.addLocalFile(srcPath);
+        }
+      }
+      zip.writeZip(archivePath);
+      const info = await fs.stat(archivePath);
+      return { content: [{ type: "text" as const, text: `${t().fc_archive.created(archivePath)}\n${t().fc_archive.labelSize}: ${(info.size / 1024).toFixed(1)} KB\n${t().fc_archive.labelFiles}: ${params.source_paths.length}` }] };
+    }
+
+    if (params.action === 'extract') {
+      const target = params.extract_to ? normalizePath(params.extract_to) : path.dirname(archivePath);
+      const zip = new AdmZip(archivePath);
+      zip.extractAllTo(target, true);
+      const entries = zip.getEntries();
+      return { content: [{ type: "text" as const, text: `${t().fc_archive.extracted(archivePath, target)}\n${t().fc_archive.labelFiles}: ${entries.length}` }] };
+    }
+
+    if (params.action === 'list') {
+      const zip = new AdmZip(archivePath);
+      const entries = zip.getEntries();
+      let listing = `${t().fc_archive.listHeader(archivePath)}\n${t().fc_archive.labelFiles}: ${entries.length}\n\n`;
+      for (const entry of entries) {
+        const size = entry.header.size;
+        listing += `${entry.isDirectory ? '[DIR]' : (size / 1024).toFixed(1) + ' KB'} ${entry.entryName}\n`;
+      }
+      return { content: [{ type: "text" as const, text: listing }] };
+    }
+
+    throw new Error(`Unknown action: ${params.action}`);
+  }
+);
+
+// ============================================================================
+// Tool: File Checksum
+// ============================================================================
+
+server.registerTool(
+  "fc_checksum",
+  {
+    title: "File Checksum",
+    description: t().fc_checksum.description,
+    inputSchema: {
+      file_path: z.string().min(1).describe("Path to file"),
+      algorithm: z.enum(["md5", "sha1", "sha256", "sha512"]).default("sha256").describe("Hash algorithm (default: sha256)"),
+      compare: z.string().optional().describe("Optional: Hash to compare against"),
+    },
+    annotations: {
+      title: "Checksum",
+      readOnlyHint: true,
+      openWorldHint: false
+    }
+  },
+  async (params) => {
+    const filePath = normalizePath(params.file_path);
+    const content = await fs.readFile(filePath);
+    const hash = createHash(params.algorithm).update(content).digest('hex');
+
+    let result = `${t().fc_checksum.header(path.basename(filePath))}\n`;
+    result += `${t().fc_checksum.labelAlgorithm}: ${params.algorithm.toUpperCase()}\n`;
+    result += `${t().fc_checksum.labelHash}: ${hash}\n`;
+
+    if (params.compare) {
+      const match = hash.toLowerCase() === params.compare.toLowerCase();
+      result += `\n${match ? t().fc_checksum.match : t().fc_checksum.mismatch}`;
+    }
+
+    return { content: [{ type: "text" as const, text: result }] };
+  }
+);
+
+// ============================================================================
+// Tool: Set Safe Mode
+// ============================================================================
+
+server.registerTool(
+  "fc_set_safe_mode",
+  {
+    title: "Set Safe Mode",
+    description: t().fc_set_safe_mode.description,
+    inputSchema: {
+      enabled: z.boolean().describe("Enable or disable safe mode"),
+    },
+    annotations: {
+      title: "Safe Mode",
+      readOnlyHint: false,
+      openWorldHint: false
+    }
+  },
+  async (params) => {
+    safeMode = params.enabled;
+    return { content: [{ type: "text" as const, text: safeMode ? t().fc_set_safe_mode.enabled : t().fc_set_safe_mode.disabled }] };
   }
 );
 

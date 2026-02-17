@@ -6,7 +6,7 @@
 
 A comprehensive **Model Context Protocol (MCP) server** that gives AI assistants full filesystem access, process management, interactive shell sessions, and async file search capabilities.
 
-**39 tools** in a single server - everything an AI agent needs to interact with the local system.
+**43 tools** in a single server - everything an AI agent needs to interact with the local system.
 
 ---
 
@@ -19,6 +19,11 @@ Most filesystem MCP servers only cover basic read/write operations. FileCommande
 - **Async Search** - Search large directory trees in the background while the AI continues working
 - **Process Management** - List, start, and terminate system processes
 - **String Replace** - Edit files by matching unique strings with context validation
+- **Format Conversion** - Convert between JSON, CSV, INI, YAML, TOML, XML, and TOON
+- **ZIP Archives** - Create, extract, and list ZIP archives
+- **File Checksums** - SHA-256, MD5, SHA-1, SHA-512 hashing with compare
+- **OCR** - Extract text from images (optional tesseract.js dependency)
+- **Safety Mode** - Toggle to route all deletes through Recycle Bin / Trash
 - **Markdown Export** - Convert Markdown to professional HTML/PDF with code blocks, tables, nested lists, blockquotes
 - **Cross-platform** - Works on Windows, macOS, and Linux with platform-specific optimizations
 
@@ -150,14 +155,28 @@ The server communicates via **stdio transport**. Point your MCP client to the `d
 | `fc_fix_encoding` | Fix Mojibake / double-encoded UTF-8 (27+ character patterns) |
 | `fc_folder_diff` | Track directory changes with snapshots (new/modified/deleted) |
 | `fc_batch_rename` | Pattern-based batch renaming (prefix/suffix, replace, auto-detect) |
-| `fc_convert_format` | Convert between JSON, CSV, and INI formats |
+| `fc_convert_format` | Convert between JSON, CSV, INI, YAML, TOML, XML, and TOON formats |
 | `fc_detect_duplicates` | Find duplicate files using SHA-256 hashing |
+| `fc_checksum` | File hashing (MD5, SHA-1, SHA-256, SHA-512) with optional compare |
 
-### System (1 tool)
+### Archive (1 tool)
+
+| Tool | Description |
+|------|-------------|
+| `fc_archive` | Create, extract, and list ZIP archives |
+
+### OCR (1 tool)
+
+| Tool | Description |
+|------|-------------|
+| `fc_ocr` | Extract text from images via tesseract.js (optional dependency) |
+
+### System (2 tools)
 
 | Tool | Description |
 |------|-------------|
 | `fc_get_time` | Get current system time with timezone info |
+| `fc_set_safe_mode` | Toggle safe mode: all deletes go through Recycle Bin / Trash |
 
 ### Export (2 tools)
 
@@ -166,7 +185,7 @@ The server communicates via **stdio transport**. Point your MCP client to the `d
 | `fc_md_to_html` | Markdown to standalone HTML with CSS styling (headers, code blocks, tables, nested lists, blockquotes, images, checkboxes) |
 | `fc_md_to_pdf` | Markdown to PDF via headless browser (Edge/Chrome). Falls back to HTML if no browser is available |
 
-**Total: 39 tools**
+**Total: 43 tools**
 
 ---
 
@@ -187,19 +206,24 @@ The server communicates via **stdio transport**. Point your MCP client to the `d
 | Duplicate detection (SHA-256) | Yes | No | No |
 | Folder diff / change tracking | Yes | No | No |
 | Batch rename (pattern-based) | Yes | No | No |
-| Format conversion (JSON/CSV/INI) | Yes | No | No |
+| Format conversion (JSON/CSV/INI/YAML/TOML/XML/TOON) | Yes | No | No |
+| ZIP archive (create/extract/list) | Yes | No | No |
+| File checksums (SHA-256/MD5) | Yes | No | No |
+| OCR (image to text) | Optional | No | No |
+| Safety mode (delete → Recycle Bin) | Yes | No | No |
 | Path allowlist / sandboxing | No | No | Yes |
 | Excel / PDF support | PDF (via browser) | Yes | No |
 | HTTP transport | No | No | No |
 | Markdown to HTML/PDF export | Yes | No | No |
-| **Total tools** | **39** | ~15 | ~11 |
+| **Total tools** | **43** | ~15 | ~11 |
 | **Servers needed** | **1** | 1 | + extra for processes |
 
 **Key differentiators:**
 - Only MCP server with **recoverable delete** (Recycle Bin / Trash)
 - Only MCP server with **async background search** with pagination
 - Built-in **JSON repair**, **encoding fix**, and **duplicate detection**
-- Most comprehensive single-server solution (39 tools)
+- Most comprehensive single-server solution (43 tools)
+- Built-in **safety mode** to prevent accidental permanent deletion
 
 ---
 
@@ -217,7 +241,7 @@ See [SECURITY.md](SECURITY.md) for detailed security information and recommendat
 
 Key points:
 - `fc_execute_command` runs arbitrary shell commands
-- `fc_delete_*` tools perform permanent deletion (use `fc_safe_delete` for recoverable deletion)
+- `fc_delete_*` tools perform permanent deletion by default (use `fc_safe_delete` or enable **safe mode** via `fc_set_safe_mode` to route all deletes through Recycle Bin / Trash)
 - No built-in sandboxing - security is delegated to the MCP client layer
 - Designed for local use via stdio transport only
 

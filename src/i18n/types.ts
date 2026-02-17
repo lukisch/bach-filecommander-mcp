@@ -389,6 +389,7 @@ export interface Translations {
     csvNeedsRows: string;
     csvNeedsArray: string;
     iniNeedsObject: string;
+    unsupportedFormat: (format: string) => string;
     converted: (from: string, to: string) => string;
     labelSource: string;
     labelTarget: string;
@@ -425,6 +426,47 @@ export interface Translations {
     labelSize: string;
     noBrowser: string;
     browserUsed: (name: string) => string;
+  };
+
+  // ==================== fc_ocr ====================
+  fc_ocr: {
+    description: string;
+    notInstalled: string;
+    unsupportedFormat: (ext: string) => string;
+    pdfNotYetSupported: string;
+    header: (filename: string) => string;
+    labelLanguage: string;
+    labelConfidence: string;
+    labelChars: string;
+    labelSaved: string;
+  };
+
+  // ==================== fc_archive ====================
+  fc_archive: {
+    description: string;
+    created: (path: string) => string;
+    extracted: (archive: string, target: string) => string;
+    listHeader: (path: string) => string;
+    labelSize: string;
+    labelFiles: string;
+  };
+
+  // ==================== fc_checksum ====================
+  fc_checksum: {
+    description: string;
+    header: (filename: string) => string;
+    labelAlgorithm: string;
+    labelHash: string;
+    match: string;
+    mismatch: string;
+  };
+
+  // ==================== fc_set_safe_mode ====================
+  fc_set_safe_mode: {
+    description: string;
+    enabled: string;
+    disabled: string;
+    redirected: (originalAction: string) => string;
   };
 
   // ==================== Server ====================

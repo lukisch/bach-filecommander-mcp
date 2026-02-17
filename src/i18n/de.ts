@@ -387,6 +387,7 @@ export const de: Translations = {
     csvNeedsRows: `\u274C CSV ben\u00f6tigt mindestens Header + 1 Datenzeile.`,
     csvNeedsArray: `\u274C CSV-Export erfordert ein JSON-Array von Objekten.`,
     iniNeedsObject: `\u274C INI-Export erfordert ein JSON-Objekt.`,
+    unsupportedFormat: (format) => `\u274C Nicht unterst\u00fctztes Format: ${format}`,
     converted: (from, to) => `\u2705 **Konvertiert: ${from} \u2192 ${to}**`,
     labelSource: 'Quelle',
     labelTarget: 'Ziel',
@@ -423,6 +424,47 @@ export const de: Translations = {
     labelSize: 'Groesse',
     noBrowser: 'Kein Browser (Edge/Chrome) gefunden. HTML-Datei wurde stattdessen erstellt.',
     browserUsed: (name) => `PDF erstellt mit ${name}`,
+  },
+
+  // ==================== fc_ocr ====================
+  fc_ocr: {
+    description: 'Extrahiert Text aus Bildern (JPG/PNG/BMP/TIFF) mittels OCR (Tesseract).',
+    notInstalled: '\u274C tesseract.js ist nicht installiert. Installiere mit: npm install tesseract.js',
+    unsupportedFormat: (ext) => `\u274C Nicht unterst\u00fctztes Dateiformat f\u00fcr OCR: ${ext}`,
+    pdfNotYetSupported: '\u274C PDF-OCR wird noch nicht unterst\u00fctzt. Bitte konvertiere die PDF-Seiten zuerst in Bilder.',
+    header: (filename) => `\uD83D\uDD0D **OCR-Ergebnis: ${filename}**`,
+    labelLanguage: 'Sprache',
+    labelConfidence: 'Konfidenz',
+    labelChars: 'Zeichen',
+    labelSaved: 'Gespeichert',
+  },
+
+  // ==================== fc_archive ====================
+  fc_archive: {
+    description: 'Erstellt, entpackt und listet ZIP-Archive.',
+    created: (p) => `\u2705 **ZIP-Archiv erstellt:** ${p}`,
+    extracted: (archive, target) => `\u2705 **Entpackt:** ${archive} \u2192 ${target}`,
+    listHeader: (p) => `\uD83D\uDCC2 **Archiv-Inhalt: ${p}**`,
+    labelSize: 'Gr\u00f6\u00dfe',
+    labelFiles: 'Dateien',
+  },
+
+  // ==================== fc_checksum ====================
+  fc_checksum: {
+    description: 'Berechnet Pr\u00fcfsummen (MD5/SHA1/SHA256/SHA512) f\u00fcr Dateien.',
+    header: (filename) => `\uD83D\uDD10 **Pr\u00fcfsumme: ${filename}**`,
+    labelAlgorithm: 'Algorithmus',
+    labelHash: 'Hash',
+    match: '\u2705 Pr\u00fcfsummen stimmen \u00fcberein!',
+    mismatch: '\u274C Pr\u00fcfsummen stimmen NICHT \u00fcberein!',
+  },
+
+  // ==================== fc_set_safe_mode ====================
+  fc_set_safe_mode: {
+    description: 'Aktiviert/deaktiviert den Safe Mode. Wenn aktiv, werden alle L\u00f6schoperationen (fc_delete_file, fc_delete_directory) \u00fcber den Papierkorb umgeleitet.',
+    enabled: '\uD83D\uDEE1\uFE0F **Safe Mode aktiviert.** Alle L\u00f6schoperationen nutzen jetzt den Papierkorb.',
+    disabled: '\u26A0\uFE0F **Safe Mode deaktiviert.** L\u00f6schoperationen sind jetzt permanent.',
+    redirected: (originalAction) => `\uD83D\uDEE1\uFE0F Safe Mode aktiv: ${originalAction} wurde in den Papierkorb umgeleitet.`,
   },
 
   // ==================== Server ====================
