@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.7.2] - 2026-02-20
+
+### Fixed
+- Update CHANGELOG with 5 missing version entries (v1.5.0-v1.7.1)
+- Fix server.json version mismatch
+- Update SECURITY.md supported versions (1.3.x -> 1.7.x)
+- Add missing runtime dependencies to THIRD_PARTY_NOTICES.md
+- Remove stale "NEW in v1.4.0" label from README
+
 ## [1.7.1] - 2026-02-17
 
 ### Changed

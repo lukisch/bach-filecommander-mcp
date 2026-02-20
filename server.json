@@ -1,7 +1,7 @@
 {
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
   "name": "io.github.lukisch/bach-filecommander-mcp",
-  "version": "1.7.1",
+  "version": "1.7.2",
   "title": "BACH FileCommander",
   "description": "43 tools for filesystem, process management, sessions, search, OCR, ZIP, and PDF export.",
   "websiteUrl": "https://github.com/lukisch/bach-filecommander-mcp",
@@ -14,7 +14,7 @@
     {
       "registryType": "npm",
       "identifier": "bach-filecommander-mcp",
-      "version": "1.7.1",
+      "version": "1.7.2",
       "transport": { "type": "stdio" },
       "runtimeHint": "npx"
     }
