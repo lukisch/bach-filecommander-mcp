@@ -14,6 +14,29 @@ This project uses the following third-party packages:
 - **Copyright:** Copyright (c) Colin McDonnell
 - **Repository:** https://github.com/colinhacks/zod
 
+### adm-zip
+- **License:** MIT
+- **Copyright:** Copyright (c) 2012 Another-D-Mention Software and other contributors
+- **Repository:** https://github.com/cthackers/adm-zip
+
+### js-yaml
+- **License:** MIT
+- **Copyright:** Copyright (c) 2011-2015 by Vitaly Puzrin
+- **Repository:** https://github.com/nodeca/js-yaml
+
+### smol-toml
+- **License:** MIT
+- **Repository:** https://github.com/nicolo-ribaudo/smol-toml
+
+### fast-xml-parser
+- **License:** MIT
+- **Copyright:** Copyright (c) 2017 Amit Kumar Gupta
+- **Repository:** https://github.com/NaturalIntelligence/fast-xml-parser
+
+### @toon-format/toon
+- **License:** MIT
+- **Repository:** https://github.com/nicfontaine/toon
+
 ## Development Dependencies
 
 ### typescript

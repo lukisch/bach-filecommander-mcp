@@ -16,16 +16,21 @@ By design, this server provides LLMs with powerful system access capabilities. P
 | `fc_delete_file` | **High** | Permanently deletes files (no recycle bin) |
 | `fc_delete_directory` | **High** | Recursively deletes directories |
 | `fc_write_file` | **Medium** | Can overwrite any accessible file |
+| `fc_ocr` | **Low** | Reads images (optional tesseract.js) |
+| `fc_archive` | **Medium** | Creates/extracts ZIP archives |
+| `fc_checksum` | **Low** | Computes file hashes (read-only) |
 
 ### Recommendations
 
-1. **Use `fc_safe_delete`** instead of `fc_delete_file`/`fc_delete_directory` when possible - it moves items to the Recycle Bin instead of permanent deletion.
+1. **Enable Safety Mode** via `fc_set_safe_mode(true)` to route all delete operations through Recycle Bin / Trash automatically.
 
-2. **Be cautious with `fc_execute_command`** - it runs commands with your full user permissions. Review commands before approving execution in your MCP client.
+2. **Use `fc_safe_delete`** instead of `fc_delete_file`/`fc_delete_directory` when possible - it moves items to the Recycle Bin instead of permanent deletion.
 
-3. **Do not expose this server to untrusted networks.** It is designed for local use via stdio transport only.
+3. **Be cautious with `fc_execute_command`** - it runs commands with your full user permissions. Review commands before approving execution in your MCP client.
 
-4. **Review your MCP client's approval settings.** Most MCP clients (like Claude Desktop) prompt before executing destructive operations. Keep these prompts enabled.
+4. **Do not expose this server to untrusted networks.** It is designed for local use via stdio transport only.
+
+5. **Review your MCP client's approval settings.** Most MCP clients (like Claude Desktop) prompt before executing destructive operations. Keep these prompts enabled.
 
 ### No Sandbox
 
@@ -45,5 +50,5 @@ If you discover a security vulnerability, please open an issue on the GitHub rep
 
 | Version | Supported |
 |---------|-----------|
-| 1.3.x   | Yes       |
-| < 1.3   | No        |
+| 1.7.x   | Yes       |
+| < 1.7   | No        |

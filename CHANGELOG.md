@@ -2,6 +2,47 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.7.1] - 2026-02-17
+
+### Changed
+- Replace custom TOON parser/serializer with official `@toon-format/toon` package
+- Proper TOON format: `key: value` syntax instead of custom `key = value`
+
+## [1.7.0] - 2026-02-17
+
+### Added
+- `fc_ocr` - Extract text from images via optional tesseract.js dependency
+- `fc_archive` - Create, extract, and list ZIP archives (via adm-zip)
+- `fc_checksum` - File hashing (MD5, SHA-1, SHA-256, SHA-512) with optional compare
+- `fc_set_safe_mode` - Toggle safety mode: route all deletes through Recycle Bin / Trash
+- Expand `fc_convert_format`: add YAML, TOML, XML, and TOON support (was JSON/CSV/INI only)
+- Full i18n (DE/EN) for all new tools
+- Total tools: 43
+
+## [1.6.1] - 2026-02-17
+
+### Added
+- `mcpName` field in package.json for MCP Registry verification
+- `server.json` for official MCP Registry publishing
+
+## [1.6.0] - 2026-02-17
+
+### Added
+- `fc_md_to_pdf` - Real PDF generation via headless Edge/Chrome browser
+- Cross-platform browser detection (Windows, macOS, Linux)
+- Fallback to HTML output if no browser is available
+- Total tools: 39
+
+## [1.5.0] - 2026-02-15
+
+### Added
+- Complete internationalization (i18n) infrastructure with German (default) and English support
+- New `fc_set_language` tool for runtime language switching
+- `FC_LANGUAGE` environment variable for startup configuration
+- ~270 translated strings (tool titles, descriptions, error messages, weekdays)
+- i18n test suite (66 tests)
+- Language priority: `fc_set_language` > `FC_LANGUAGE` env > `"de"` default
+
 ## [1.4.1] - 2026-02-14
 
 ### Fixed

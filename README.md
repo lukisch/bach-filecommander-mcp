@@ -145,7 +145,7 @@ The server communicates via **stdio transport**. Point your MCP client to the `d
 | `fc_list_sessions` | List all sessions |
 | `fc_close_session` | Terminate a session |
 
-### File Maintenance & Repair (8 tools) - NEW in v1.4.0
+### File Maintenance & Repair (8 tools)
 
 | Tool | Description |
 |------|-------------|
