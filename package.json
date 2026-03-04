@@ -17,7 +17,7 @@
     "THIRD_PARTY_NOTICES.md"
   ],
   "scripts": {
-    "build": "tsc",
+    "build": "node node_modules/typescript/bin/tsc",
     "start": "node dist/index.js",
     "dev": "tsc --watch",
     "prepublishOnly": "npm run build"
