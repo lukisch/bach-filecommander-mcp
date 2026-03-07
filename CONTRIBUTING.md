@@ -1,57 +1,28 @@
-# Contributing to BACH FileCommander MCP
+# Contributing to ellmos-filecommander-mcp
 
-Thank you for your interest in contributing!
+Thanks for your interest in contributing!
 
 ## Getting Started
 
-1. Fork the repository
-2. Clone your fork
-3. Install dependencies: `npm install`
-4. Build: `npm run build`
-5. Make your changes in `src/index.ts`
-6. Test manually with your MCP client
+1. Fork and clone: `git clone https://github.com/YOUR_USERNAME/ellmos-filecommander-mcp.git`
+2. Install: `npm install`
+3. Build: `npm run build`
 
-## Development
+## How to Contribute
 
-```bash
-# Watch mode (auto-rebuild on changes)
-npm run dev
+- **Bug fixes**: Open an Issue or submit a PR directly
+- **New file operations**: Extend the tool set
+- **Documentation**: Always appreciated
 
-# One-time build
-npm run build
+### Good First Issues
 
-# Start the server
-npm start
-```
+Look for [`good first issue`](https://github.com/ellmos-ai/ellmos-filecommander-mcp/labels/good%20first%20issue) labels.
 
-## Pull Request Guidelines
+## Guidelines
 
-- Keep changes focused - one feature or fix per PR
-- Update the CHANGELOG.md with your changes
-- Follow the existing code style
-- Test your changes with an actual MCP client (e.g., Claude Desktop)
-
-## Adding New Tools
-
-When adding a new tool:
-
-1. Follow the `fc_` prefix convention
-2. Include proper `annotations` (readOnlyHint, destructiveHint, etc.)
-3. Add the tool to the README's tool table
-4. Add error handling with descriptive error messages
-
-## Code Style
-
-- TypeScript strict mode
-- Use async/await (no raw Promises)
-- Error messages should be clear and actionable
-- Use the existing helper functions (`normalizePath`, `pathExists`, `formatFileSize`)
-
-## Reporting Issues
-
-- Use GitHub Issues
-- Include your Node.js version, OS, and MCP client
-- For bugs, include steps to reproduce
+- TypeScript with strict types
+- One feature/fix per PR
+- Test file operations carefully (destructive actions need safeguards)
 
 ## License
 
