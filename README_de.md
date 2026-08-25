@@ -13,14 +13,14 @@
 [![npm version](https://img.shields.io/npm/v/ellmos-filecommander-mcp.svg)](https://www.npmjs.com/package/ellmos-filecommander-mcp)
 [![Node.js](https://img.shields.io/badge/node-%3E%3D20-brightgreen.svg)](https://nodejs.org/)
 [![MCP Tools](https://img.shields.io/badge/MCP%20Tools-47-blueviolet.svg)](#tools-übersicht)
-[![Tests](https://img.shields.io/badge/tests-250%20passed%20(181%20vitest%20%2B%2069%20i18n)-brightgreen.svg)](#entwicklung)
+[![Tests](https://img.shields.io/badge/tests-253%20passed%20(184%20vitest%20%2B%2069%20i18n)-brightgreen.svg)](#entwicklung)
 [![Security: Zero-Egress](https://img.shields.io/badge/security-local--first%20%7C%20zero--egress-blue.svg)](SECURITY.md)
 [![Safe Delete](https://img.shields.io/badge/safety-papierkorb%20%7C%20trash-blue.svg)](#warum-filecommander)
 [![ellmos-ai](https://img.shields.io/badge/organization-ellmos--ai-purple.svg)](https://github.com/ellmos-ai)
 [![open-bricks](https://img.shields.io/badge/ecosystem-open--bricks-blue.svg)](https://github.com/open-bricks)
 [![Discovery: llms.txt](https://img.shields.io/badge/discovery-llms.txt-blue.svg)](llms.txt)
 
-> **Schnellnavigation:** [Tools-Übersicht](#tools-übersicht) | [Installation](#installation) | [Konfiguration](#konfiguration) | [Sicherheitsrichtlinie](SECURITY.md) | [Changelog](CHANGELOG.md) | [llms.txt](llms.txt)
+> **Schnellnavigation:** [Tools-Übersicht](#tools-übersicht) | [Systemarchitektur](#systemarchitektur) | [Kernfähigkeiten & Sicherheitsinvarianten](#kernfähigkeiten--sicherheitsinvarianten) | [Installation](#installation) | [Konfiguration](#konfiguration) | [Vergleich](#vergleich-mit-alternativen) | [Auffindbarkeit](#auffindbarkeit) | [Sicherheit](#sicherheit) | [Ökosystem](#ellmos-ai-ökosystem) | [Sicherheitsrichtlinie](SECURITY.md) | [Changelog](CHANGELOG.md) | [llms.txt](llms.txt)
 
 Ein umfassender **Model Context Protocol (MCP) Server**, der KI-Assistenten vollen Dateisystemzugriff, begrenzte Mehrdatei-Inhaltssuche, Prozessverwaltung, interaktive Shell-Sitzungen und asynchrone Dateinamensuche bietet.
 
@@ -128,6 +128,25 @@ sequenceDiagram
 
 ---
 
+## Kernfähigkeiten & Sicherheitsinvarianten
+
+| Fähigkeit / Invariante | Garantie & Implementierungsdetails | Sicherheits- & Betriebsvorteil |
+|------------------------|-----------------------------------|--------------------------------|
+| **100% Local-First & Zero-Egress** | Arbeitet ausschließlich lokal über Standard-Ein/Ausgabe (`stdio` JSON-RPC). Kein Netzwerk-Egress, keine Telemetrie. | Maximaler Datenschutz; volle Konformität mit Zero-Trust- und DSGVO-Vorgaben. |
+| **Sicheres Löschen & Papierkorb-Schutz** | `fc_safe_delete` verschiebt Objekte in den Windows-Papierkorb / macOS Trash / Linux FreeDesktop Trash. `fc_set_safe_mode` schützt alle Löschoperationen. | Verhindert irreversiblen Datenverlust bei versehentlichen rekursiven Löschungen. |
+| **Cloud-Lock-robuste Verschiebung (`fc_move`)** | Automatische Erkennung von Cloud-Sync-Filter-Sperren (OneDrive, Dropbox, iCloud) mit nahtlosem Copy+Verify+Delete-Fallback. | Beseitigt `EPERM`- und `EBUSY`-Abbrüche bei agentischen Dateioperationen in synchronisierten Ordnern. |
+| **Cloud-Lock-Diagnose (`fc_check_cloud_lock`)** | Vorabprüfung auf Offline-Sync-Attribute, Reparse Points und Platzhalter-Zustände. | KI-Agenten können unvollständig synchronisierte oder gesperrte Cloud-Dateien vorab erkennen. |
+| **Begrenzte Mehrdatei-Inhaltssuche** | `fc_search_content` limitiert Eingaben strikt (max. 50 explizite Dateien, 10 MB/Datei, 200 Treffer, 200k Zeichen) ohne Glob-Rekursion. | Verhindert Speicherüberläufe und CPU-Blockaden bei der Analyse großer Repositories. |
+| **Automatische Geheimnis- & Token-Schwärzung** | Inhaltsauszüge maskieren bekannte API-Schlüssel, Bearer-Tokens, AWS-Credentials und Authentifizierungs-Header automatisch. | Verhindert Kontext-Kontamination und versehentlichen Abfluss von Zugangsdaten in LLM-Prompts. |
+| **Interaktive REPL- & Sitzungs-Isolation** | Zustandsbehaftete interaktive Sitzungen (`fc_start_session`, `fc_send_input`, `fc_read_output`) für Python, Node.js, Bash und PowerShell mit Puffergrenzen. | Ermöglicht mehrstufiges REPL-Debugging ohne unkontrollierte Hintergrundprozesse. |
+| **Verlustfreie Multi-Format-Engine** | Deklarative Konvertierung (`fc_convert_format`) über 7 strukturierte Formate (JSON, YAML, TOML, XML, CSV, INI, TOON). | Saubere Datenharmonisierung heterogener Konfigurationsformate ohne Informationsverlust. |
+| **Mojibake- & Dateireparatur-Engine** | `fc_fix_encoding`, `fc_fix_json` und `fc_cleanup_file` reparieren fehlerhafte UTF-8-Codierungen (27+ Muster), defekte JSON-Syntax, BOMs und NUL-Bytes. | Selbstheilende Dateipipelines bei plattformübergreifend beschädigten Text- und Datendateien. |
+| **Unprivilegierter Non-Elevation-Betrieb** | Ausgelegt und verifiziert für den Betrieb im unprivilegierten Standard-Benutzerkontext ohne Root-/Admin-Rechte. | Minimale Angriffsfläche nach dem Prinzip der geringsten Rechte (Least Privilege). |
+| **Zweisprachige Laufzeit-i18n-Engine** | Dynamische Sprachumschaltung zur Laufzeit (`fc_set_language`) für deutsche (`de`) und englische (`en`) Tool-Antworten. | Native zweisprachige Entwicklererfahrung und verständliche Fehlerdiagnostik. |
+| **Multi-OS verifizierte CI-Matrix** | Vollständig getestet auf Windows, Ubuntu Linux und macOS unter Node.js 20, 22 und 24 mit 253 automatisierten Assertionen. | Durchgehende Plattformparität und Zuverlässigkeit. |
+
+---
+
 ## Installation
 
 ### Voraussetzungen
@@ -194,7 +213,7 @@ Der Server kommuniziert über **stdio transport**. Verweisen Sie Ihren MCP-Clien
 
 ---
 
-## Übersicht der Tools
+## Tools-Übersicht
 
 ### Dateisystemoperationen (14 Tools)
 
@@ -405,7 +424,7 @@ npm test
 
 ### Tests
 
-Das Projekt enthält **175 Vitest-Tests plus 69 eigenständige i18n-Prüfungen (244 insgesamt)** für Dateisystemoperationen, begrenzte Inhaltssuche, Formatkonvertierung, Encoding-Reparatur, Archiv-Handling, Duplikaterkennung, Sprachpakete und mehr.
+Das Projekt enthält **184 Vitest-Tests plus 69 eigenständige i18n-Prüfungen (253 insgesamt)** für Dateisystemoperationen, begrenzte Inhaltssuche, Formatkonvertierung, Encoding-Reparatur, Archiv-Handling, Duplikaterkennung, Sprachpakete und mehr.
 
 ```bash
 npm test              # Alle Tests ausführen

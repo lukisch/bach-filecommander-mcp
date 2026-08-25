@@ -64,9 +64,9 @@ describe('Metadata, Registry Manifest and Discoverability Parity', () => {
     expect(files).toContain('llms.txt');
   });
 
-  it('llms.txt is synchronized with 2026-08-21 and accurate ecosystem tools', () => {
+  it('llms.txt is synchronized with 2026-08-25 and accurate ecosystem tools', () => {
     const llms = readFileSync(llmsPath, 'utf-8');
-    expect(llms).toContain('## Last-checked: 2026-08-21');
+    expect(llms).toContain('## Last-checked: 2026-08-25');
     expect(llms).toContain('47 tools');
     expect(llms).toContain('fc_search_content');
     expect(llms).toContain('safe-delete');
@@ -94,7 +94,7 @@ describe('Metadata, Registry Manifest and Discoverability Parity', () => {
     expect(sec).toContain('1.10.x');
   });
 
-  it('GitHub Actions CI workflow uses multi-OS matrix and v4 actions', () => {
+  it('GitHub Actions CI workflow uses multi-OS matrix, v4 actions, and concurrency control', () => {
     const ciPath = resolve(ROOT, '.github/workflows/tests.yml');
     expect(existsSync(ciPath)).toBe(true);
     const ci = readFileSync(ciPath, 'utf-8');
@@ -103,10 +103,12 @@ describe('Metadata, Registry Manifest and Discoverability Parity', () => {
     expect(ci).toContain('macos-latest');
     expect(ci).toContain('actions/checkout@v4');
     expect(ci).toContain('actions/setup-node@v4');
+    expect(ci).toContain('concurrency:');
+    expect(ci).toContain('cancel-in-progress: true');
     expect(ci).toContain('npm test');
   });
 
-  it('README files contain valid badges, ecosystem links, and architecture diagrams', () => {
+  it('README files contain valid badges, quick navigation, and architecture diagrams', () => {
     const en = readFileSync(readmeEnPath, 'utf-8');
     const de = readFileSync(readmeDePath, 'utf-8');
 
@@ -114,10 +116,19 @@ describe('Metadata, Registry Manifest and Discoverability Parity', () => {
     expect(en).toContain('open-bricks');
     expect(en).toContain('mermaid');
     expect(en).toContain('47');
+    expect(en).toContain('tests-253%20passed');
+    expect(en).toContain('Quick Navigation:');
+    expect(en).toContain('#core-capabilities--safety-invariants');
+    expect(en).toContain('## Core Capabilities & Safety Invariants');
+
     expect(de).toContain('ellmos-ai');
     expect(de).toContain('open-bricks');
     expect(de).toContain('mermaid');
     expect(de).toContain('47');
+    expect(de).toContain('tests-253%20passed');
+    expect(de).toContain('Schnellnavigation:');
+    expect(de).toContain('#kernfähigkeiten--sicherheitsinvarianten');
+    expect(de).toContain('## Kernfähigkeiten & Sicherheitsinvarianten');
 
     // Sibling server tools counts
     expect(en).toContain('ControlCenter');
@@ -129,5 +140,28 @@ describe('Metadata, Registry Manifest and Discoverability Parity', () => {
     expect(de).toContain('31');
     expect(de).toContain('n8n Manager');
     expect(de).toContain('19');
+  });
+
+  it('verifies bilingual core capabilities and safety invariants matrix parity', () => {
+    const en = readFileSync(readmeEnPath, 'utf-8');
+    const de = readFileSync(readmeDePath, 'utf-8');
+
+    expect(en).toContain('100% Local-First & Zero-Egress');
+    expect(en).toContain('Safe Deletion & Trash Protection');
+    expect(en).toContain('Cloud-Lock Resilient Move');
+    expect(en).toContain('Bounded Multi-File Content Search');
+    expect(en).toContain('Automated Secret & Token Redaction');
+    expect(en).toContain('Lossless Multi-Format Engine');
+    expect(en).toContain('Mojibake & File Repair Engine');
+    expect(en).toContain('Unprivileged Non-Elevation Execution');
+
+    expect(de).toContain('100% Local-First & Zero-Egress');
+    expect(de).toContain('Sicheres Löschen & Papierkorb-Schutz');
+    expect(de).toContain('Cloud-Lock-robuste Verschiebung');
+    expect(de).toContain('Begrenzte Mehrdatei-Inhaltssuche');
+    expect(de).toContain('Automatische Geheimnis- & Token-Schwärzung');
+    expect(de).toContain('Verlustfreie Multi-Format-Engine');
+    expect(de).toContain('Mojibake- & Dateireparatur-Engine');
+    expect(de).toContain('Unprivilegierter Non-Elevation-Betrieb');
   });
 });

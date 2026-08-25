@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.10.1] - 2026-08-25
+
+### Discoverability, README Navigation & CI Matrix Concurrency (Pfad B)
+- **Bilingual README Quick Navigation:** Enriched quick navigation bars in `README.md` and `README_de.md` with comprehensive section anchor jump targets covering architecture, capabilities, configuration, comparisons, discoverability, security, and ecosystem.
+- **Core Capabilities & Safety Invariants Matrix:** Integrated bilingual capability and invariant matrices detailing 100% Local-First & Zero-Egress guarantees, Safe Deletion & Trash routing, Cloud-Lock resilience (`fc_move` & `fc_check_cloud_lock`), bounded content search, secret redaction, unprivileged non-elevation execution, and multi-format conversions.
+- **CI Workflow Concurrency Hardening:** Enhanced GitHub Actions CI (`.github/workflows/tests.yml`) with concurrency groups and `cancel-in-progress: true` to prevent redundant runner execution on rapid pushes.
+- **Test Badges & Contract Parity Suite:** Synchronized README test badges to 253 passed tests (184 Vitest + 69 i18n assertions); expanded `test/metadata-parity.test.ts` to 9 automated contract tests verifying CI concurrency, bilingual capabilities parity, navigation anchors, and `llms.txt` freshness (`2026-08-25`).
+
 ## [1.10.1] - 2026-08-21
 
 ### Technical Hygiene, CI Multi-OS Matrix & Bilingual Security Policy (Pfad A)

@@ -13,14 +13,14 @@
 [![npm version](https://img.shields.io/npm/v/ellmos-filecommander-mcp.svg)](https://www.npmjs.com/package/ellmos-filecommander-mcp)
 [![Node.js](https://img.shields.io/badge/node-%3E%3D20-brightgreen.svg)](https://nodejs.org/)
 [![MCP Tools](https://img.shields.io/badge/MCP%20Tools-47-blueviolet.svg)](#tools-overview)
-[![Tests](https://img.shields.io/badge/tests-250%20passed%20(181%20vitest%20%2B%2069%20i18n)-brightgreen.svg)](#testing)
+[![Tests](https://img.shields.io/badge/tests-253%20passed%20(184%20vitest%20%2B%2069%20i18n)-brightgreen.svg)](#testing)
 [![Security: Zero-Egress](https://img.shields.io/badge/security-local--first%20%7C%20zero--egress-blue.svg)](SECURITY.md)
 [![Safe Delete](https://img.shields.io/badge/safety-recycle--bin%20%7C%20trash-blue.svg)](#why-filecommander)
 [![ellmos-ai](https://img.shields.io/badge/organization-ellmos--ai-purple.svg)](https://github.com/ellmos-ai)
 [![open-bricks](https://img.shields.io/badge/ecosystem-open--bricks-blue.svg)](https://github.com/open-bricks)
 [![Discovery: llms.txt](https://img.shields.io/badge/discovery-llms.txt-blue.svg)](llms.txt)
 
-> **Quick Navigation:** [Tools Overview](#tools-overview) | [Installation](#installation) | [Configuration](#configuration) | [Security Policy](SECURITY.md) | [Changelog](CHANGELOG.md) | [llms.txt](llms.txt)
+> **Quick Navigation:** [Tools Overview](#tools-overview) | [System Architecture](#system-architecture) | [Core Capabilities & Safety Invariants](#core-capabilities--safety-invariants) | [Installation](#installation) | [Configuration](#configuration) | [Comparison](#comparison-with-alternatives) | [Discoverability](#discoverability) | [Security](#security) | [Ecosystem](#ellmos-ai-ecosystem) | [Security Policy](SECURITY.md) | [Changelog](CHANGELOG.md) | [llms.txt](llms.txt)
 
 A comprehensive **Model Context Protocol (MCP) server** that gives AI assistants full filesystem access, bounded multi-file content search, process management, interactive shell sessions, and async filename search capabilities.
 
@@ -125,6 +125,25 @@ sequenceDiagram
         FC-->>AI: Move succeeded
     end
 ```
+
+---
+
+## Core Capabilities & Safety Invariants
+
+| Capability / Invariant | Guarantee & Implementation Details | Security & Operational Benefit |
+|------------------------|-----------------------------------|--------------------------------|
+| **100% Local-First & Zero-Egress** | Operates strictly on the local host via standard stdio JSON-RPC. No network egress, no analytics, no external telemetry. | Maximum data privacy; compliance with enterprise zero-trust requirements. |
+| **Safe Deletion & Trash Protection** | `fc_safe_delete` moves items to Windows Recycle Bin / macOS Trash / Linux FreeDesktop Trash. `fc_set_safe_mode` routes all deletes safely. | Prevents irreversible data loss from accidental recursive or bulk deletions. |
+| **Cloud-Lock Resilient Move (`fc_move`)** | Automatic detection of cloud sync filters (OneDrive, Dropbox, iCloud reparse points) with seamless copy+verify+delete fallback. | Eliminates `EPERM` / `EBUSY` failures during automated agent operations in sync directories. |
+| **Cloud-Lock Diagnosis (`fc_check_cloud_lock`)** | Pre-flight inspection for offline sync attributes, reparse points, and placeholder file states. | AI agents can avoid operating on un-hydrated or locked cloud files before execution. |
+| **Bounded Multi-File Content Search** | `fc_search_content` strictly caps inputs (max 50 explicit files, 10 MB per file, 200 matches, 200k chars) without glob recursion. | Prevents out-of-memory errors and catastrophic CPU lockups during large repository searches. |
+| **Automated Secret & Token Redaction** | Content search excerpts automatically mask common API keys, bearer tokens, AWS credentials, and authorization headers. | Prevents LLM context contamination and accidental credential leakage in prompt history. |
+| **Interactive REPL & Session Isolation** | Stateful interactive sessions (`fc_start_session`, `fc_send_input`, `fc_read_output`) for Python, Node.js, bash, and PowerShell with bounded buffers. | Allows multi-turn REPL debugging without unconstrained background process buildup. |
+| **Lossless Multi-Format Engine** | Declarative conversion (`fc_convert_format`) across 7 structured formats (JSON, YAML, TOML, XML, CSV, INI, TOON). | Clean data normalization across heterogeneous configuration formats without data loss. |
+| **Mojibake & File Repair Engine** | `fc_fix_encoding`, `fc_fix_json`, and `fc_cleanup_file` repair broken UTF-8 encoding (27+ patterns), malformed JSON syntax, BOMs, and NUL bytes. | Self-healing pipelines for corrupted files generated across divergent OS platforms. |
+| **Unprivileged Non-Elevation Execution** | Designed and verified to run in standard unprivileged user-mode. Never requires administrative or root privileges. | Minimal attack surface; adheres to the principle of least privilege. |
+| **Bilingual Runtime i18n Engine** | Dynamic runtime language switching (`fc_set_language`) for German (`de`) and English (`en`) tool feedback strings. | Native bilingual developer experience and localized error reporting. |
+| **Multi-OS Verified Matrix** | Tested across Windows, Ubuntu Linux, and macOS on Node.js 20, 22, and 24 with 253 automated assertions. | Continuous cross-platform parity and reliability. |
 
 ---
 
@@ -405,7 +424,7 @@ npm test
 
 ### Testing
 
-The project includes **175 Vitest tests plus 69 standalone i18n checks (244 total)** covering filesystem operations, bounded content search, format conversion, encoding repair, archive handling, duplicate detection, language packs, and more.
+The project includes **184 Vitest tests plus 69 standalone i18n checks (253 total)** covering filesystem operations, bounded content search, format conversion, encoding repair, archive handling, duplicate detection, language packs, and more.
 
 ```bash
 npm test              # Run all tests
