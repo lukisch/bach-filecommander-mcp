@@ -1,4 +1,4 @@
-## Last-checked: 2026-08-25
+## Last-checked: 2026-08-26
 
 # ellmos-filecommander-mcp - MCP Server for Filesystem and Process Access
 
@@ -6,7 +6,7 @@
 
 Why it exists: most filesystem MCP servers only cover basic read/write. FileCommander goes further with Safe Delete (Recycle Bin on Windows, Trash on macOS/Linux instead of permanent deletion), read-only literal or regex search across an explicit ordered list of files, interactive REPL sessions (Python, Node.js, shells) accessible through the MCP protocol, async search of large directory trees running in the background while the AI continues other work, process management (list, start, terminate), string-replace editing with context validation, format conversion across JSON / CSV / INI / YAML / TOML / XML / TOON, ZIP archive create/extract/list, SHA-256 / MD5 / SHA-1 / SHA-512 checksums with compare, optional tesseract.js OCR for image text extraction, runtime language selection (i18n de/en), global safety mode to route all deletes through Recycle Bin / Trash, and Markdown-to-HTML/PDF export. Cross-platform with platform-specific optimizations.
 
-Node.js >= 20, MIT. Published as `ellmos-filecommander-mcp` on npm and indexed by jsDelivr; registries may show the previously published metadata until version 1.10.0 is released. Visible on LobeHub as an MCP server. Listed on Glama at https://glama.ai/mcp/servers/ellmos-ai/ellmos-filecommander-mcp. README/package metadata are the canonical current 47-tool source for the repository. Official MCP Registry name: `io.github.ellmos-ai/ellmos-filecommander-mcp`. Discovery files: `server.json` for the MCP Registry, `glama.json` for Glama-compatible MCP directories, and this `llms.txt` for LLM/documentation crawlers.
+Node.js >= 20, MIT. Published as `ellmos-filecommander-mcp` on npm and indexed by jsDelivr; registries may briefly lag behind the current release. Visible on LobeHub as an MCP server. Listed on Glama at https://glama.ai/mcp/servers/ellmos-ai/ellmos-filecommander-mcp. README/package metadata are the canonical current 47-tool source for the repository. Official MCP Registry name: `io.github.ellmos-ai/ellmos-filecommander-mcp`. Discovery files: `server.json` for the MCP Registry, `glama.json` for Glama-compatible MCP directories, and this `llms.txt` for LLM/documentation crawlers.
 
 `fc_search_content` searches at most 50 explicit UTF-8 text files in input order. Literal matching is the default; regex, case sensitivity, context lines, global limits, and per-file limits are optional. It performs no recursion or glob expansion, skips binary and files over 10 MB, reports partial per-file errors, redacts common secret formats, and returns deterministic bounded JSON.
 
@@ -14,7 +14,7 @@ Node.js >= 20, MIT. Published as `ellmos-filecommander-mcp` on npm and indexed b
 
 - [README (English)](https://github.com/ellmos-ai/ellmos-filecommander-mcp/blob/master/README.md): Tools, installation, configuration for Claude Desktop / Claude Code
 - [README (Deutsch)](https://github.com/ellmos-ai/ellmos-filecommander-mcp/blob/master/README_de.md): German version
-- [SECURITY.md](https://github.com/ellmos-ai/ellmos-filecommander-mcp/blob/master/SECURITY.md): Bilingual security policy & zero-egress guarantees
+- [SECURITY.md](https://github.com/ellmos-ai/ellmos-filecommander-mcp/blob/master/SECURITY.md): Bilingual security policy for local stdio, explicit `fc_web_fetch` egress, process risks, and safe-mode boundaries
 - [CHANGELOG.md](https://github.com/ellmos-ai/ellmos-filecommander-mcp/blob/master/CHANGELOG.md): Release history and audit log
 - [LICENSE](https://github.com/ellmos-ai/ellmos-filecommander-mcp/blob/master/LICENSE): MIT license text
 - [npm package](https://www.npmjs.com/package/ellmos-filecommander-mcp): Published artifact

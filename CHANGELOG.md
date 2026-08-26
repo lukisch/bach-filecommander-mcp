@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.10.2] - 2026-08-26
+
+### Security metadata and explicit trust boundaries
+- Add all four standard MCP security annotations to every one of the 47 tools and move `fc_set_language` to the annotated `registerTool` API.
+- Classify arbitrary command, background-process, and interactive-session entry points conservatively as potentially destructive; classify OCR output and archive writes explicitly.
+- Replace runtime-generated OCR import code with `createRequire` for the optional `tesseract.js` dependency.
+- Correct the bilingual security documentation: stdio transport has no telemetry or automatic egress, while an explicit `fc_web_fetch` call performs outbound HTTP(S) access.
+- Document that safe mode redirects only the two delete tools and does not sandbox command or interactive-session tools.
+- Add four regression tests for annotation completeness, high-risk classifications, OCR loading, and bilingual security-boundary parity (257 total checks).
+
 ## [1.10.1] - 2026-08-25
 
 ### Discoverability, README Navigation & CI Matrix Concurrency (Pfad B)

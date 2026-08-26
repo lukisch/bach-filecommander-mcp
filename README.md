@@ -13,8 +13,8 @@
 [![npm version](https://img.shields.io/npm/v/ellmos-filecommander-mcp.svg)](https://www.npmjs.com/package/ellmos-filecommander-mcp)
 [![Node.js](https://img.shields.io/badge/node-%3E%3D20-brightgreen.svg)](https://nodejs.org/)
 [![MCP Tools](https://img.shields.io/badge/MCP%20Tools-47-blueviolet.svg)](#tools-overview)
-[![Tests](https://img.shields.io/badge/tests-253%20passed%20(184%20vitest%20%2B%2069%20i18n)-brightgreen.svg)](#testing)
-[![Security: Zero-Egress](https://img.shields.io/badge/security-local--first%20%7C%20zero--egress-blue.svg)](SECURITY.md)
+[![Tests](https://img.shields.io/badge/tests-257%20passed%20(188%20vitest%20%2B%2069%20i18n)-brightgreen.svg)](#testing)
+[![Security: Explicit Egress](https://img.shields.io/badge/security-local--first%20%7C%20explicit--egress-blue.svg)](SECURITY.md)
 [![Safe Delete](https://img.shields.io/badge/safety-recycle--bin%20%7C%20trash-blue.svg)](#why-filecommander)
 [![ellmos-ai](https://img.shields.io/badge/organization-ellmos--ai-purple.svg)](https://github.com/ellmos-ai)
 [![open-bricks](https://img.shields.io/badge/ecosystem-open--bricks-blue.svg)](https://github.com/open-bricks)
@@ -132,7 +132,7 @@ sequenceDiagram
 
 | Capability / Invariant | Guarantee & Implementation Details | Security & Operational Benefit |
 |------------------------|-----------------------------------|--------------------------------|
-| **100% Local-First & Zero-Egress** | Operates strictly on the local host via standard stdio JSON-RPC. No network egress, no analytics, no external telemetry. | Maximum data privacy; compliance with enterprise zero-trust requirements. |
+| **Local stdio & explicit egress** | The MCP transport is local stdio, with no telemetry and no automatic network egress. `fc_web_fetch` makes outbound HTTP(S) requests only when a client explicitly invokes it; private targets are blocked by default unless `allow_private` is enabled. | Makes the network boundary visible to clients while retaining a local, port-free server transport. |
 | **Safe Deletion & Trash Protection** | `fc_safe_delete` moves items to Windows Recycle Bin / macOS Trash / Linux FreeDesktop Trash. `fc_set_safe_mode` routes all deletes safely. | Prevents irreversible data loss from accidental recursive or bulk deletions. |
 | **Cloud-Lock Resilient Move (`fc_move`)** | Automatic detection of cloud sync filters (OneDrive, Dropbox, iCloud reparse points) with seamless copy+verify+delete fallback. | Eliminates `EPERM` / `EBUSY` failures during automated agent operations in sync directories. |
 | **Cloud-Lock Diagnosis (`fc_check_cloud_lock`)** | Pre-flight inspection for offline sync attributes, reparse points, and placeholder file states. | AI agents can avoid operating on un-hydrated or locked cloud files before execution. |
@@ -143,7 +143,7 @@ sequenceDiagram
 | **Mojibake & File Repair Engine** | `fc_fix_encoding`, `fc_fix_json`, and `fc_cleanup_file` repair broken UTF-8 encoding (27+ patterns), malformed JSON syntax, BOMs, and NUL bytes. | Self-healing pipelines for corrupted files generated across divergent OS platforms. |
 | **Unprivileged Non-Elevation Execution** | Designed and verified to run in standard unprivileged user-mode. Never requires administrative or root privileges. | Minimal attack surface; adheres to the principle of least privilege. |
 | **Bilingual Runtime i18n Engine** | Dynamic runtime language switching (`fc_set_language`) for German (`de`) and English (`en`) tool feedback strings. | Native bilingual developer experience and localized error reporting. |
-| **Multi-OS Verified Matrix** | Tested across Windows, Ubuntu Linux, and macOS on Node.js 20, 22, and 24 with 253 automated assertions. | Continuous cross-platform parity and reliability. |
+| **Multi-OS Verified Matrix** | Tested across Windows, Ubuntu Linux, and macOS on Node.js 20, 22, and 24 with 257 automated assertions. | Continuous cross-platform parity and reliability. |
 
 ---
 
@@ -385,7 +385,7 @@ FileCommander is designed to be discoverable by both people and AI agents:
 
 Primary search terms: `ellmos-filecommander-mcp`, `FileCommander MCP`, `filesystem MCP server`, `multi-file content search MCP`, `safe delete MCP`, `async file search MCP`, `process management MCP`, `Markdown PDF MCP`.
 
-External discovery notes: npm and jsDelivr may show the previously published metadata until version 1.10.0 is released. LobeHub indexes the GitHub repo as an MCP server. Use the package description and this README as the canonical 47-tool source for the current repository.
+External discovery notes: npm and jsDelivr may briefly lag behind the current release. LobeHub indexes the GitHub repo as an MCP server. Use the package description and this README as the canonical 47-tool source for the current repository.
 
 ---
 
@@ -397,9 +397,11 @@ See [SECURITY.md](SECURITY.md) for detailed security information and recommendat
 
 Key points:
 - `fc_execute_command` runs arbitrary shell commands
+- `fc_start_session` starts an arbitrary interactive command, and subsequent `fc_send_input` calls can execute additional actions
 - `fc_delete_*` tools perform permanent deletion by default (use `fc_safe_delete` or enable **safe mode** via `fc_set_safe_mode` to route all deletes through Recycle Bin / Trash)
+- Safe mode protects only `fc_delete_file` and `fc_delete_directory`; it does not sandbox commands or interactive sessions
+- The server transport is local stdio and emits no telemetry, but an explicit `fc_web_fetch` call performs outbound HTTP(S) access
 - No built-in sandboxing - security is delegated to the MCP client layer
-- Designed for local use via stdio transport only
 
 ---
 
@@ -424,7 +426,7 @@ npm test
 
 ### Testing
 
-The project includes **184 Vitest tests plus 69 standalone i18n checks (253 total)** covering filesystem operations, bounded content search, format conversion, encoding repair, archive handling, duplicate detection, language packs, and more.
+The project includes **188 Vitest tests plus 69 standalone i18n checks (257 total)** covering filesystem operations, bounded content search, format conversion, encoding repair, archive handling, duplicate detection, language packs, tool annotations, and security boundaries.
 
 ```bash
 npm test              # Run all tests

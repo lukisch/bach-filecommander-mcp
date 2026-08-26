@@ -13,8 +13,8 @@
 [![npm version](https://img.shields.io/npm/v/ellmos-filecommander-mcp.svg)](https://www.npmjs.com/package/ellmos-filecommander-mcp)
 [![Node.js](https://img.shields.io/badge/node-%3E%3D20-brightgreen.svg)](https://nodejs.org/)
 [![MCP Tools](https://img.shields.io/badge/MCP%20Tools-47-blueviolet.svg)](#tools-übersicht)
-[![Tests](https://img.shields.io/badge/tests-253%20passed%20(184%20vitest%20%2B%2069%20i18n)-brightgreen.svg)](#entwicklung)
-[![Security: Zero-Egress](https://img.shields.io/badge/security-local--first%20%7C%20zero--egress-blue.svg)](SECURITY.md)
+[![Tests](https://img.shields.io/badge/tests-257%20passed%20(188%20vitest%20%2B%2069%20i18n)-brightgreen.svg)](#entwicklung)
+[![Security: Explicit Egress](https://img.shields.io/badge/security-local--first%20%7C%20explicit--egress-blue.svg)](SECURITY.md)
 [![Safe Delete](https://img.shields.io/badge/safety-papierkorb%20%7C%20trash-blue.svg)](#warum-filecommander)
 [![ellmos-ai](https://img.shields.io/badge/organization-ellmos--ai-purple.svg)](https://github.com/ellmos-ai)
 [![open-bricks](https://img.shields.io/badge/ecosystem-open--bricks-blue.svg)](https://github.com/open-bricks)
@@ -132,7 +132,7 @@ sequenceDiagram
 
 | Fähigkeit / Invariante | Garantie & Implementierungsdetails | Sicherheits- & Betriebsvorteil |
 |------------------------|-----------------------------------|--------------------------------|
-| **100% Local-First & Zero-Egress** | Arbeitet ausschließlich lokal über Standard-Ein/Ausgabe (`stdio` JSON-RPC). Kein Netzwerk-Egress, keine Telemetrie. | Maximaler Datenschutz; volle Konformität mit Zero-Trust- und DSGVO-Vorgaben. |
+| **Lokales stdio & expliziter Egress** | Der MCP-Transport arbeitet lokal über stdio, ohne Telemetrie und ohne automatischen Netzwerk-Egress. `fc_web_fetch` sendet HTTP(S)-Anfragen nur nach einem ausdrücklichen Client-Aufruf; private Ziele sind standardmäßig gesperrt, sofern `allow_private` nicht aktiviert wird. | Macht die Netzwerkgrenze für Clients sichtbar und behält einen lokalen Servertransport ohne offene Ports bei. |
 | **Sicheres Löschen & Papierkorb-Schutz** | `fc_safe_delete` verschiebt Objekte in den Windows-Papierkorb / macOS Trash / Linux FreeDesktop Trash. `fc_set_safe_mode` schützt alle Löschoperationen. | Verhindert irreversiblen Datenverlust bei versehentlichen rekursiven Löschungen. |
 | **Cloud-Lock-robuste Verschiebung (`fc_move`)** | Automatische Erkennung von Cloud-Sync-Filter-Sperren (OneDrive, Dropbox, iCloud) mit nahtlosem Copy+Verify+Delete-Fallback. | Beseitigt `EPERM`- und `EBUSY`-Abbrüche bei agentischen Dateioperationen in synchronisierten Ordnern. |
 | **Cloud-Lock-Diagnose (`fc_check_cloud_lock`)** | Vorabprüfung auf Offline-Sync-Attribute, Reparse Points und Platzhalter-Zustände. | KI-Agenten können unvollständig synchronisierte oder gesperrte Cloud-Dateien vorab erkennen. |
@@ -143,7 +143,7 @@ sequenceDiagram
 | **Mojibake- & Dateireparatur-Engine** | `fc_fix_encoding`, `fc_fix_json` und `fc_cleanup_file` reparieren fehlerhafte UTF-8-Codierungen (27+ Muster), defekte JSON-Syntax, BOMs und NUL-Bytes. | Selbstheilende Dateipipelines bei plattformübergreifend beschädigten Text- und Datendateien. |
 | **Unprivilegierter Non-Elevation-Betrieb** | Ausgelegt und verifiziert für den Betrieb im unprivilegierten Standard-Benutzerkontext ohne Root-/Admin-Rechte. | Minimale Angriffsfläche nach dem Prinzip der geringsten Rechte (Least Privilege). |
 | **Zweisprachige Laufzeit-i18n-Engine** | Dynamische Sprachumschaltung zur Laufzeit (`fc_set_language`) für deutsche (`de`) und englische (`en`) Tool-Antworten. | Native zweisprachige Entwicklererfahrung und verständliche Fehlerdiagnostik. |
-| **Multi-OS verifizierte CI-Matrix** | Vollständig getestet auf Windows, Ubuntu Linux und macOS unter Node.js 20, 22 und 24 mit 253 automatisierten Assertionen. | Durchgehende Plattformparität und Zuverlässigkeit. |
+| **Multi-OS verifizierte CI-Matrix** | Vollständig getestet auf Windows, Ubuntu Linux und macOS unter Node.js 20, 22 und 24 mit 257 automatisierten Assertionen. | Durchgehende Plattformparität und Zuverlässigkeit. |
 
 ---
 
@@ -385,7 +385,7 @@ FileCommander ist so dokumentiert, dass Menschen, LLMs und MCP-Verzeichnisse ihn
 
 Primäre Suchbegriffe: `ellmos-filecommander-mcp`, `FileCommander MCP`, `filesystem MCP server`, `multi-file content search MCP`, `safe delete MCP`, `async file search MCP`, `process management MCP`, `Markdown PDF MCP`.
 
-Externe Auffindbarkeit: npm und jsDelivr können bis zur Veröffentlichung von Version 1.10.0 noch die zuvor publizierten Metadaten zeigen. LobeHub indexiert das GitHub-Repo als MCP-Server. Die Paketbeschreibung und diese README sind die kanonische 47-Tool-Referenz für den aktuellen Repository-Stand.
+Externe Auffindbarkeit: npm und jsDelivr können dem aktuellen Release kurzzeitig hinterherhinken. LobeHub indexiert das GitHub-Repo als MCP-Server. Die Paketbeschreibung und diese README sind die kanonische 47-Tool-Referenz für den aktuellen Repository-Stand.
 
 ---
 
@@ -397,9 +397,11 @@ Siehe [SECURITY.md](SECURITY.md) für detaillierte Sicherheitsinformationen und 
 
 Wichtige Punkte:
 - `fc_execute_command` führt beliebige Shell-Befehle aus
+- `fc_start_session` startet einen beliebigen interaktiven Befehl; nachfolgende `fc_send_input`-Aufrufe können weitere Aktionen ausführen
 - `fc_delete_*` Tools löschen standardmäßig permanent (verwenden Sie `fc_safe_delete` oder aktivieren Sie den **Safety Mode** über `fc_set_safe_mode`, um alle Löschvorgänge über den Papierkorb / Trash zu leiten)
+- Der Safety Mode schützt ausschließlich `fc_delete_file` und `fc_delete_directory`; er schränkt Befehle oder interaktive Sitzungen nicht ein
+- Der Servertransport ist lokales stdio ohne Telemetrie; ein expliziter `fc_web_fetch`-Aufruf führt jedoch ausgehenden HTTP(S)-Zugriff aus
 - Kein eingebautes Sandboxing — die Sicherheit wird an die MCP-Client-Schicht delegiert
-- Ausschließlich für lokale Nutzung über stdio transport konzipiert
 
 ---
 
@@ -424,7 +426,7 @@ npm test
 
 ### Tests
 
-Das Projekt enthält **184 Vitest-Tests plus 69 eigenständige i18n-Prüfungen (253 insgesamt)** für Dateisystemoperationen, begrenzte Inhaltssuche, Formatkonvertierung, Encoding-Reparatur, Archiv-Handling, Duplikaterkennung, Sprachpakete und mehr.
+Das Projekt enthält **188 Vitest-Tests plus 69 eigenständige i18n-Prüfungen (257 insgesamt)** für Dateisystemoperationen, begrenzte Inhaltssuche, Formatkonvertierung, Encoding-Reparatur, Archiv-Handling, Duplikaterkennung, Sprachpakete, Tool-Annotationen und Sicherheitsgrenzen.
 
 ```bash
 npm test              # Alle Tests ausführen

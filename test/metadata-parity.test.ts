@@ -64,9 +64,9 @@ describe('Metadata, Registry Manifest and Discoverability Parity', () => {
     expect(files).toContain('llms.txt');
   });
 
-  it('llms.txt is synchronized with 2026-08-25 and accurate ecosystem tools', () => {
+  it('llms.txt is synchronized with 2026-08-26 and accurate ecosystem tools', () => {
     const llms = readFileSync(llmsPath, 'utf-8');
-    expect(llms).toContain('## Last-checked: 2026-08-25');
+    expect(llms).toContain('## Last-checked: 2026-08-26');
     expect(llms).toContain('47 tools');
     expect(llms).toContain('fc_search_content');
     expect(llms).toContain('safe-delete');
@@ -80,13 +80,16 @@ describe('Metadata, Registry Manifest and Discoverability Parity', () => {
     expect(llms).toContain('16 tools');
   });
 
-  it('SECURITY.md contains bilingual policy, zero-egress guarantees, and contact endpoints', () => {
+  it('SECURITY.md contains bilingual policy, explicit egress boundaries, and contact endpoints', () => {
     const sec = readFileSync(securityPath, 'utf-8');
     expect(sec).toContain('Security Policy / Sicherheitsrichtlinie');
     expect(sec).toContain('English: Security Policy');
     expect(sec).toContain('Deutsch: Sicherheitsrichtlinie');
-    expect(sec).toContain('Zero-Egress');
     expect(sec).toContain('Local-First');
+    expect(sec).toContain('Explicit outbound access');
+    expect(sec).toContain('Expliziter ausgehender Zugriff');
+    expect(sec).toContain('fc_web_fetch');
+    expect(sec).toContain('fc_start_session');
     expect(sec).toContain('fc_set_safe_mode');
     expect(sec).toContain('fc_check_cloud_lock');
     expect(sec).toContain('security@ellmos.ai');
@@ -116,7 +119,7 @@ describe('Metadata, Registry Manifest and Discoverability Parity', () => {
     expect(en).toContain('open-bricks');
     expect(en).toContain('mermaid');
     expect(en).toContain('47');
-    expect(en).toContain('tests-253%20passed');
+    expect(en).toContain('tests-257%20passed');
     expect(en).toContain('Quick Navigation:');
     expect(en).toContain('#core-capabilities--safety-invariants');
     expect(en).toContain('## Core Capabilities & Safety Invariants');
@@ -125,7 +128,7 @@ describe('Metadata, Registry Manifest and Discoverability Parity', () => {
     expect(de).toContain('open-bricks');
     expect(de).toContain('mermaid');
     expect(de).toContain('47');
-    expect(de).toContain('tests-253%20passed');
+    expect(de).toContain('tests-257%20passed');
     expect(de).toContain('Schnellnavigation:');
     expect(de).toContain('#kernfähigkeiten--sicherheitsinvarianten');
     expect(de).toContain('## Kernfähigkeiten & Sicherheitsinvarianten');
@@ -146,7 +149,7 @@ describe('Metadata, Registry Manifest and Discoverability Parity', () => {
     const en = readFileSync(readmeEnPath, 'utf-8');
     const de = readFileSync(readmeDePath, 'utf-8');
 
-    expect(en).toContain('100% Local-First & Zero-Egress');
+    expect(en).toContain('Local stdio & explicit egress');
     expect(en).toContain('Safe Deletion & Trash Protection');
     expect(en).toContain('Cloud-Lock Resilient Move');
     expect(en).toContain('Bounded Multi-File Content Search');
@@ -155,7 +158,7 @@ describe('Metadata, Registry Manifest and Discoverability Parity', () => {
     expect(en).toContain('Mojibake & File Repair Engine');
     expect(en).toContain('Unprivileged Non-Elevation Execution');
 
-    expect(de).toContain('100% Local-First & Zero-Egress');
+    expect(de).toContain('Lokales stdio & expliziter Egress');
     expect(de).toContain('Sicheres Löschen & Papierkorb-Schutz');
     expect(de).toContain('Cloud-Lock-robuste Verschiebung');
     expect(de).toContain('Begrenzte Mehrdatei-Inhaltssuche');

@@ -9,7 +9,7 @@
  * See LICENSE file for details.
  *
  * @author Lukas (BACH)
- * @version 1.10.1
+ * @version 1.10.2
  * @license MIT
  */
 
@@ -46,6 +46,7 @@ import {
 } from "./search-content.js";
 
 const execAsync = promisify(exec);
+const nodeRequire = createRequire(import.meta.url);
 
 // ============================================================================
 // Server Initialization
@@ -53,7 +54,7 @@ const execAsync = promisify(exec);
 
 const server = new McpServer({
   name: "ellmos-filecommander-mcp",
-  version: "1.10.1"
+  version: "1.10.2"
 });
 
 // ============================================================================
@@ -1723,7 +1724,7 @@ Examples:
     },
     annotations: {
       readOnlyHint: false,
-      destructiveHint: false,
+      destructiveHint: true,
       idempotentHint: false,
       openWorldHint: true
     }
@@ -2334,7 +2335,7 @@ Examples:
     },
     annotations: {
       readOnlyHint: false,
-      destructiveHint: false,
+      destructiveHint: true,
       idempotentHint: false,
       openWorldHint: true
     }
@@ -2480,7 +2481,7 @@ Examples:
     },
     annotations: {
       readOnlyHint: false,
-      destructiveHint: false,
+      destructiveHint: true,
       idempotentHint: false,
       openWorldHint: true
     }
@@ -4209,14 +4210,16 @@ server.registerTool(
     },
     annotations: {
       title: "OCR",
-      readOnlyHint: true,
+      readOnlyHint: false,
+      destructiveHint: true,
+      idempotentHint: true,
       openWorldHint: false
     }
   },
   async (params) => {
     let Tesseract: any;
     try {
-      Tesseract = await (Function('return import("tesseract.js")')());
+      Tesseract = nodeRequire("tesseract.js");
     } catch {
       return { content: [{ type: "text" as const, text: t().fc_ocr.notInstalled }] };
     }
@@ -4270,6 +4273,8 @@ server.registerTool(
     annotations: {
       title: "Archive",
       readOnlyHint: false,
+      destructiveHint: true,
+      idempotentHint: false,
       openWorldHint: false
     }
   },
@@ -4333,6 +4338,8 @@ server.registerTool(
     annotations: {
       title: "Checksum",
       readOnlyHint: true,
+      destructiveHint: false,
+      idempotentHint: true,
       openWorldHint: false
     }
   },
@@ -4609,6 +4616,8 @@ server.registerTool(
     annotations: {
       title: "Safe Mode",
       readOnlyHint: false,
+      destructiveHint: false,
+      idempotentHint: true,
       openWorldHint: false
     }
   },
@@ -4622,13 +4631,24 @@ server.registerTool(
 // Tool: Set Language
 // ============================================================================
 
-server.tool(
+server.registerTool(
   "fc_set_language",
-  "Set the output language for FileCommander tools",
-  { language: z.enum(["de", "en", "es", "zh", "ja", "ru"]).describe("Language code") },
-  async ({ language }) => {
-    setLanguage(language as Lang);
-    return { content: [{ type: "text", text: t().server.languageSet(language) }] };
+  {
+    title: "Set Language",
+    description: "Set the output language for FileCommander tools",
+    inputSchema: {
+      language: z.enum(["de", "en", "es", "zh", "ja", "ru"]).describe("Language code"),
+    },
+    annotations: {
+      readOnlyHint: false,
+      destructiveHint: false,
+      idempotentHint: true,
+      openWorldHint: false
+    }
+  },
+  async (params) => {
+    setLanguage(params.language as Lang);
+    return { content: [{ type: "text", text: t().server.languageSet(params.language) }] };
   }
 );
 
@@ -4731,7 +4751,7 @@ async function main(): Promise<void> {
   // Update-Hinweis nur im interaktiven Terminal — niemals im stdio-/MCP-Betrieb (Protokoll-Schutz)
   if (process.stdout.isTTY) {
     try {
-      updateNotifier({ pkg: createRequire(import.meta.url)("../package.json") }).notify();
+      updateNotifier({ pkg: nodeRequire("../package.json") }).notify();
     } catch { /* Update-Check darf den Start nie blockieren */ }
   }
   const transport = new StdioServerTransport();
