@@ -40,14 +40,14 @@ describe('Metadata, Registry Manifest and Discoverability Parity', () => {
     expect(srcIndex).toContain(`* @version ${pkg.version}`);
   });
 
-  it('manifests correctly reflect 47 tools and standard transport', () => {
+  it('manifests correctly reflect 48 tools and standard transport', () => {
     const glama = JSON.parse(readFileSync(glamaPath, 'utf-8'));
     const server = JSON.parse(readFileSync(serverPath, 'utf-8'));
     const pkg = JSON.parse(readFileSync(pkgPath, 'utf-8'));
 
-    expect(glama.tools.count).toBe(47);
+    expect(glama.tools.count).toBe(48);
     expect(server.packages[0].transport.type).toBe('stdio');
-    expect(pkg.description).toContain('47 tools');
+    expect(pkg.description).toContain('48 tools');
   });
 
   it('package.json files array includes all essential artifacts and manifests', () => {
@@ -67,7 +67,7 @@ describe('Metadata, Registry Manifest and Discoverability Parity', () => {
   it('llms.txt is synchronized with 2026-08-26 and accurate ecosystem tools', () => {
     const llms = readFileSync(llmsPath, 'utf-8');
     expect(llms).toContain('## Last-checked: 2026-08-26');
-    expect(llms).toContain('47 tools');
+    expect(llms).toContain('48 tools');
     expect(llms).toContain('fc_search_content');
     expect(llms).toContain('safe-delete');
     expect(llms).toContain('SECURITY.md');
@@ -118,8 +118,8 @@ describe('Metadata, Registry Manifest and Discoverability Parity', () => {
     expect(en).toContain('ellmos-ai');
     expect(en).toContain('open-bricks');
     expect(en).toContain('mermaid');
-    expect(en).toContain('47');
-    expect(en).toContain('tests-257%20passed');
+    expect(en).toContain('48');
+    expect(en).toContain('tests-261%20passed');
     expect(en).toContain('Quick Navigation:');
     expect(en).toContain('#core-capabilities--safety-invariants');
     expect(en).toContain('## Core Capabilities & Safety Invariants');
@@ -127,8 +127,8 @@ describe('Metadata, Registry Manifest and Discoverability Parity', () => {
     expect(de).toContain('ellmos-ai');
     expect(de).toContain('open-bricks');
     expect(de).toContain('mermaid');
-    expect(de).toContain('47');
-    expect(de).toContain('tests-257%20passed');
+    expect(de).toContain('48');
+    expect(de).toContain('tests-261%20passed');
     expect(de).toContain('Schnellnavigation:');
     expect(de).toContain('#kernfähigkeiten--sicherheitsinvarianten');
     expect(de).toContain('## Kernfähigkeiten & Sicherheitsinvarianten');

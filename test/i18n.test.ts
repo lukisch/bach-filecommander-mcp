@@ -80,6 +80,24 @@ describe("i18n language packs", () => {
     expect(t().fc_check_cloud_lock.checkError("cldflt")).toContain("cldflt");
   });
 
+  it("formats fc_get_language output natively in all six runtime languages", () => {
+    const supported = getSupportedLanguages();
+    const expectations: Record<Lang, string> = {
+      de: "Aktuelle Sprache: de",
+      en: "Current language: en",
+      es: "Idioma actual: es",
+      zh: "当前语言: zh",
+      ja: "現在の言語: ja",
+      ru: "Текущий язык: ru",
+    };
+
+    for (const lang of supported) {
+      setLanguage(lang);
+      expect(t().server.languageGet(lang, supported)).toContain(expectations[lang]);
+      expect(t().server.languageGet(lang, supported)).toContain(supported.join(", "));
+    }
+  });
+
   for (const lang of ["es", "zh", "ja", "ru"] as const) {
     it(`does not keep the old ${lang} English-fallback stub`, async () => {
       const source = await readFile(new URL(`../src/i18n/${lang}.ts`, import.meta.url), "utf-8");

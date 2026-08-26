@@ -462,5 +462,6 @@ export const ru: Translations = {
   server: {
     started: '\uD83D\uDE80 MCP-сервер FileCommander запущен',
     languageSet: (lang) => `Язык установлен: ${lang}`,
+    languageGet: (lang, supported) => `Текущий язык: ${lang} (Поддерживаемые: ${supported.join(', ')})`,
   },
 };

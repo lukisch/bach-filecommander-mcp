@@ -509,5 +509,6 @@ export const en: Translations = {
   server: {
     started: '\uD83D\uDE80 ellmos FileCommander MCP Server started',
     languageSet: (lang) => `Language set to: ${lang}`,
+    languageGet: (lang, supported) => `Current language: ${lang} (Supported: ${supported.join(', ')})`,
   },
 };

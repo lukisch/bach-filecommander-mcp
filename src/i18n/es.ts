@@ -462,5 +462,6 @@ export const es: Translations = {
   server: {
     started: '\uD83D\uDE80 Servidor MCP FileCommander iniciado',
     languageSet: (lang) => `Idioma establecido en: ${lang}`,
+    languageGet: (lang, supported) => `Idioma actual: ${lang} (Soportados: ${supported.join(', ')})`,
   },
 };

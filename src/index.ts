@@ -9,7 +9,7 @@
  * See LICENSE file for details.
  *
  * @author Lukas (BACH)
- * @version 1.10.2
+ * @version 1.10.3
  * @license MIT
  */
 
@@ -19,7 +19,7 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import updateNotifier from "update-notifier";
 import { createRequire } from "node:module";
 import { z } from "zod";
-import { t, setLanguage, getLanguage } from './i18n/index.js';
+import { t, setLanguage, getLanguage, getSupportedLanguages } from './i18n/index.js';
 import type { Lang } from './i18n/index.js';
 import * as fs from "fs/promises";
 import * as fsSync from "fs";
@@ -54,7 +54,7 @@ const nodeRequire = createRequire(import.meta.url);
 
 const server = new McpServer({
   name: "ellmos-filecommander-mcp",
-  version: "1.10.2"
+  version: "1.10.3"
 });
 
 // ============================================================================
@@ -4649,6 +4649,30 @@ server.registerTool(
   async (params) => {
     setLanguage(params.language as Lang);
     return { content: [{ type: "text", text: t().server.languageSet(params.language) }] };
+  }
+);
+
+// ============================================================================
+// Tool: Get Language
+// ============================================================================
+
+server.registerTool(
+  "fc_get_language",
+  {
+    title: "Get Language",
+    description: "Get the active output language and all supported language codes",
+    inputSchema: {},
+    annotations: {
+      readOnlyHint: true,
+      destructiveHint: false,
+      idempotentHint: true,
+      openWorldHint: false
+    }
+  },
+  async () => {
+    const current = getLanguage();
+    const supported = getSupportedLanguages();
+    return { content: [{ type: "text", text: t().server.languageGet(current, supported) }] };
   }
 );
 

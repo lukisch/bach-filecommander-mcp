@@ -55,9 +55,9 @@ function registeredToolAnnotations(): Map<string, AnnotationMap> {
 }
 
 describe('MCP tool security contract', () => {
-  it('registers all 47 tools with every standard boolean annotation', () => {
+  it('registers all 48 tools with every standard boolean annotation', () => {
     const tools = registeredToolAnnotations();
-    expect(tools.size).toBe(47);
+    expect(tools.size).toBe(48);
     expect(sourceText).not.toMatch(/server\.tool\s*\(/);
 
     for (const [name, annotations] of tools) {
@@ -76,6 +76,16 @@ describe('MCP tool security contract', () => {
     expect(tools.get('fc_start_session')).toMatchObject({ destructiveHint: true, openWorldHint: true });
     expect(tools.get('fc_ocr')).toMatchObject({ readOnlyHint: false, destructiveHint: true });
     expect(tools.get('fc_web_fetch')).toMatchObject({ readOnlyHint: true, openWorldHint: true });
+  });
+
+  it('classifies fc_get_language as a local read-only query', () => {
+    const tools = registeredToolAnnotations();
+    expect(tools.get('fc_get_language')).toEqual({
+      readOnlyHint: true,
+      destructiveHint: false,
+      idempotentHint: true,
+      openWorldHint: false,
+    });
   });
 
   it('loads optional OCR without runtime code generation', () => {

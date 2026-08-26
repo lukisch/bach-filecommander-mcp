@@ -462,5 +462,6 @@ export const ja: Translations = {
   server: {
     started: '\uD83D\uDE80 FileCommander MCPサーバーを起動しました',
     languageSet: (lang) => `言語を設定しました: ${lang}`,
+    languageGet: (lang, supported) => `現在の言語: ${lang} (対応言語: ${supported.join(', ')})`,
   },
 };

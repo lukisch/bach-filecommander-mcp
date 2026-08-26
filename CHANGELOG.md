@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.10.3] - 2026-08-26
+
+### Runtime language introspection
+- Add the read-only `fc_get_language` MCP tool to report the active language and the stable list of six supported runtime languages.
+- Classify the new tool explicitly as read-only, non-destructive, idempotent, and local-only through standard MCP annotations.
+- Add native result text for German, English, Spanish, Chinese, Japanese, and Russian.
+- Add a real stdio integration contract for the 48-tool surface and every supported language switch; synchronize manifests, bilingual documentation, and 261 automated checks.
+
 ## [1.10.2] - 2026-08-26
 
 ### Security metadata and explicit trust boundaries

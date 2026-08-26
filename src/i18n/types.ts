@@ -511,5 +511,6 @@ export interface Translations {
   server: {
     started: string;
     languageSet: (lang: string) => string;
+    languageGet: (lang: string, supported: string[]) => string;
   };
 }

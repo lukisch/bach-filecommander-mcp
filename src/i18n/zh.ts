@@ -462,5 +462,6 @@ export const zh: Translations = {
   server: {
     started: '\uD83D\uDE80 FileCommander MCP 服务器已启动',
     languageSet: (lang) => `语言设置为: ${lang}`,
+    languageGet: (lang, supported) => `当前语言: ${lang} (支持: ${supported.join(', ')})`,
   },
 };

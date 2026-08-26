@@ -12,8 +12,8 @@
 [![CI](https://github.com/ellmos-ai/ellmos-filecommander-mcp/actions/workflows/tests.yml/badge.svg)](https://github.com/ellmos-ai/ellmos-filecommander-mcp/actions/workflows/tests.yml)
 [![npm version](https://img.shields.io/npm/v/ellmos-filecommander-mcp.svg)](https://www.npmjs.com/package/ellmos-filecommander-mcp)
 [![Node.js](https://img.shields.io/badge/node-%3E%3D20-brightgreen.svg)](https://nodejs.org/)
-[![MCP Tools](https://img.shields.io/badge/MCP%20Tools-47-blueviolet.svg)](#tools-overview)
-[![Tests](https://img.shields.io/badge/tests-257%20passed%20(188%20vitest%20%2B%2069%20i18n)-brightgreen.svg)](#testing)
+[![MCP Tools](https://img.shields.io/badge/MCP%20Tools-48-blueviolet.svg)](#tools-overview)
+[![Tests](https://img.shields.io/badge/tests-261%20passed%20(192%20vitest%20%2B%2069%20i18n)-brightgreen.svg)](#testing)
 [![Security: Explicit Egress](https://img.shields.io/badge/security-local--first%20%7C%20explicit--egress-blue.svg)](SECURITY.md)
 [![Safe Delete](https://img.shields.io/badge/safety-recycle--bin%20%7C%20trash-blue.svg)](#why-filecommander)
 [![ellmos-ai](https://img.shields.io/badge/organization-ellmos--ai-purple.svg)](https://github.com/ellmos-ai)
@@ -24,7 +24,7 @@
 
 A comprehensive **Model Context Protocol (MCP) server** that gives AI assistants full filesystem access, bounded multi-file content search, process management, interactive shell sessions, and async filename search capabilities.
 
-**47 tools** in a single server - everything an AI agent needs to interact with the local system.
+**48 tools** in a single server - everything an AI agent needs to interact with the local system.
 
 **Discovery keywords:** local filesystem MCP server, multi-file content search MCP, safe delete MCP, Recycle Bin MCP server, process management MCP, interactive shell MCP, async file search for AI agents, cloud-lock-safe file operations, Markdown to PDF MCP, OCR MCP server, ZIP archive MCP.
 
@@ -32,7 +32,7 @@ A comprehensive **Model Context Protocol (MCP) server** that gives AI assistants
 
 > [!NOTE]
 > **For AI Agents & LLM Integrations:**
-> FileCommander provides **47 specialized tools** accessible via standard stdio transport. All tool names use the `fc_` prefix to prevent namespace collisions. For LLMs, compact context and schema overviews are available in [`llms.txt`](llms.txt) and [`server.json`](server.json).
+> FileCommander provides **48 specialized tools** accessible via standard stdio transport. All tool names use the `fc_` prefix to prevent namespace collisions. For LLMs, compact context and schema overviews are available in [`llms.txt`](llms.txt) and [`server.json`](server.json).
 
 ---
 
@@ -71,13 +71,13 @@ flowchart TD
         Stdio["Stdio Transport (JSON-RPC)"]
     end
 
-    subgraph Core["ellmos FileCommander Engine (47 Tools)"]
+    subgraph Core["ellmos FileCommander Engine (48 Tools)"]
         FS["Filesystem Engine\n(14 tools: read, write, edit, safe-delete, cloud-lock safe)"]
         Search["Search Engine\n(6 tools: explicit content search plus 5 async filename-search tools)"]
         Proc["Process & REPL Sessions\n(9 tools: exec, background proc, interactive REPLs)"]
         Repair["Repair & Format Converter\n(9 tools: JSON fix, Mojibake fix, duplicates, format convert, checksum)"]
         Export["Export & Web Fetch\n(3 tools: Markdown->HTML/PDF, web_fetch)"]
-        Sys["System, Utilities & i18n\n(6 tools: OCR, ZIP, cloud-lock check, safe-mode, time, i18n)"]
+        Sys["System, Utilities & i18n\n(7 tools: OCR, ZIP, cloud-lock check, safe-mode, time, language set/get)"]
     end
 
     Client -->|JSON-RPC| Stdio
@@ -142,8 +142,8 @@ sequenceDiagram
 | **Lossless Multi-Format Engine** | Declarative conversion (`fc_convert_format`) across 7 structured formats (JSON, YAML, TOML, XML, CSV, INI, TOON). | Clean data normalization across heterogeneous configuration formats without data loss. |
 | **Mojibake & File Repair Engine** | `fc_fix_encoding`, `fc_fix_json`, and `fc_cleanup_file` repair broken UTF-8 encoding (27+ patterns), malformed JSON syntax, BOMs, and NUL bytes. | Self-healing pipelines for corrupted files generated across divergent OS platforms. |
 | **Unprivileged Non-Elevation Execution** | Designed and verified to run in standard unprivileged user-mode. Never requires administrative or root privileges. | Minimal attack surface; adheres to the principle of least privilege. |
-| **Bilingual Runtime i18n Engine** | Dynamic runtime language switching (`fc_set_language`) for German (`de`) and English (`en`) tool feedback strings. | Native bilingual developer experience and localized error reporting. |
-| **Multi-OS Verified Matrix** | Tested across Windows, Ubuntu Linux, and macOS on Node.js 20, 22, and 24 with 257 automated assertions. | Continuous cross-platform parity and reliability. |
+| **Six-language Runtime i18n Engine** | Dynamic language switching and introspection (`fc_set_language`, `fc_get_language`) for German (`de`), English (`en`), Spanish (`es`), Chinese (`zh`), Japanese (`ja`), and Russian (`ru`). | Native multilingual developer experience and localized error reporting. |
+| **Multi-OS Verified Matrix** | Tested across Windows, Ubuntu Linux, and macOS on Node.js 20, 22, and 24 with 261 automated assertions. | Continuous cross-platform parity and reliability. |
 
 ---
 
@@ -303,13 +303,14 @@ The server communicates via **stdio transport**. Point your MCP client to the `d
 |------|-------------|
 | `fc_check_cloud_lock` | Diagnose whether a path may be blocked by cloud sync filters (Windows) |
 
-### System (3 tools)
+### System (4 tools)
 
 | Tool | Description |
 |------|-------------|
 | `fc_get_time` | Get current system time with timezone info |
 | `fc_set_safe_mode` | Toggle safe mode: all deletes go through Recycle Bin / Trash |
-| `fc_set_language` | Set runtime language for tool responses (`de` or `en`) |
+| `fc_set_language` | Set the runtime language (`de`, `en`, `es`, `zh`, `ja`, or `ru`) |
+| `fc_get_language` | Read the active runtime language and all supported language codes |
 
 ### Export (2 tools)
 
@@ -324,7 +325,7 @@ The server communicates via **stdio transport**. Point your MCP client to the `d
 |------|-------------|
 | `fc_web_fetch` | Fetch a web page and return content by `mode`: extract (clean main text), raw (HTTP body), links, forms, or headers. Read-only network tool; SSRF guard blocks internal/private targets by default. |
 
-**Total: 47 tools**
+**Total: 48 tools**
 
 ---
 
@@ -355,7 +356,7 @@ The server communicates via **stdio transport**. Point your MCP client to the `d
 | Excel / PDF support | PDF (via browser) | Yes | No |
 | HTTP transport | No | No | No |
 | Markdown to HTML/PDF export | Yes | No | No |
-| **Total tools** | **47** | ~15 | ~11 |
+| **Total tools** | **48** | ~15 | ~11 |
 | **Servers needed** | **1** | 1 | + extra for processes |
 
 **Key differentiators:**
@@ -363,7 +364,7 @@ The server communicates via **stdio transport**. Point your MCP client to the `d
 - Only MCP server with **async background search** with pagination
 - Built-in **JSON repair**, **encoding fix**, and **duplicate detection**
 - Only MCP server with **cloud-lock-safe file operations** (automatic copy+delete fallback)
-- Most comprehensive single-server solution (47 tools)
+- Most comprehensive single-server solution (48 tools)
 - Built-in **safety mode** to prevent accidental permanent deletion
 
 ---
@@ -385,7 +386,7 @@ FileCommander is designed to be discoverable by both people and AI agents:
 
 Primary search terms: `ellmos-filecommander-mcp`, `FileCommander MCP`, `filesystem MCP server`, `multi-file content search MCP`, `safe delete MCP`, `async file search MCP`, `process management MCP`, `Markdown PDF MCP`.
 
-External discovery notes: npm and jsDelivr may briefly lag behind the current release. LobeHub indexes the GitHub repo as an MCP server. Use the package description and this README as the canonical 47-tool source for the current repository.
+External discovery notes: npm and jsDelivr may briefly lag behind the current release. LobeHub indexes the GitHub repo as an MCP server. Use the package description and this README as the canonical 48-tool source for the current repository.
 
 ---
 
@@ -426,7 +427,7 @@ npm test
 
 ### Testing
 
-The project includes **188 Vitest tests plus 69 standalone i18n checks (257 total)** covering filesystem operations, bounded content search, format conversion, encoding repair, archive handling, duplicate detection, language packs, tool annotations, and security boundaries.
+The project includes **192 Vitest tests plus 69 standalone i18n checks (261 total)** covering filesystem operations, bounded content search, format conversion, encoding repair, archive handling, duplicate detection, language packs, tool annotations, real stdio language-tool behavior, and security boundaries.
 
 ```bash
 npm test              # Run all tests
@@ -475,7 +476,7 @@ This MCP server is part of the **[ellmos-ai](https://github.com/ellmos-ai)** eco
 
 | Server | Tools | Focus | npm |
 |--------|-------|-------|-----|
-| **[FileCommander](https://github.com/ellmos-ai/ellmos-filecommander-mcp)** | **47** | **Filesystem, content search, process management, interactive sessions, cloud-lock-safe operations** | **[`ellmos-filecommander-mcp`](https://www.npmjs.com/package/ellmos-filecommander-mcp)** |
+| **[FileCommander](https://github.com/ellmos-ai/ellmos-filecommander-mcp)** | **48** | **Filesystem, content search, process management, interactive sessions, cloud-lock-safe operations** | **[`ellmos-filecommander-mcp`](https://www.npmjs.com/package/ellmos-filecommander-mcp)** |
 | [CodeCommander](https://github.com/ellmos-ai/ellmos-codecommander-mcp) | 22 | Code analysis, JSON repair, imports, diffs, regex | [`ellmos-codecommander-mcp`](https://www.npmjs.com/package/ellmos-codecommander-mcp) |
 | [Clatcher](https://github.com/ellmos-ai/ellmos-clatcher-mcp) | 12 | File repair, format conversion, batch operations | [`ellmos-clatcher-mcp`](https://www.npmjs.com/package/ellmos-clatcher-mcp) |
 | [n8n Manager](https://github.com/ellmos-ai/n8n-manager-mcp) | 19 | n8n workflow management via AI assistants | [`n8n-manager-mcp`](https://www.npmjs.com/package/n8n-manager-mcp) |
