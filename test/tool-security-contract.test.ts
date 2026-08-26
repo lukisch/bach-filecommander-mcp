@@ -55,9 +55,9 @@ function registeredToolAnnotations(): Map<string, AnnotationMap> {
 }
 
 describe('MCP tool security contract', () => {
-  it('registers all 48 tools with every standard boolean annotation', () => {
+  it('registers all 49 tools with every standard boolean annotation', () => {
     const tools = registeredToolAnnotations();
-    expect(tools.size).toBe(48);
+    expect(tools.size).toBe(49);
     expect(sourceText).not.toMatch(/server\.tool\s*\(/);
 
     for (const [name, annotations] of tools) {
@@ -84,6 +84,16 @@ describe('MCP tool security contract', () => {
       readOnlyHint: true,
       destructiveHint: false,
       idempotentHint: true,
+      openWorldHint: false,
+    });
+  });
+
+  it('classifies fc_open_path as a local non-destructive launch action', () => {
+    const tools = registeredToolAnnotations();
+    expect(tools.get('fc_open_path')).toEqual({
+      readOnlyHint: false,
+      destructiveHint: false,
+      idempotentHint: false,
       openWorldHint: false,
     });
   });

@@ -173,6 +173,16 @@ export const es: Translations = {
     startError: (msg) => `\u274C Error al iniciar el proceso: ${msg}`,
   },
 
+  fc_open_path: {
+    description: 'Abre un archivo o directorio local existente con la aplicación predeterminada del sistema operativo.',
+    launchRequested: (targetPath, platform) => `\uD83D\uDE80 Solicitud de apertura iniciada: ${targetPath} (plataforma: ${platform})`,
+    noVisibleConfirmation: 'El iniciador nativo aceptó la solicitud; no se confirma automáticamente que la aplicación de destino se haya abierto de forma visible.',
+    notFound: (targetPath) => `\u274C Ruta no encontrada: ${targetPath}`,
+    unsupportedTarget: (targetPath) => `\u274C La ruta no es un archivo normal ni un directorio: ${targetPath}`,
+    unsupportedPlatform: (platform) => `\u274C Plataforma no compatible: ${platform}`,
+    launchError: (msg) => `\u274C Error al iniciar la solicitud de apertura: ${msg}`,
+  },
+
   fc_get_time: {
     header: `\uD83D\uDD50 **Hora actual del sistema**`,
     labelDate: 'Fecha',

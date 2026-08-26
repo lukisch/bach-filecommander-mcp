@@ -98,6 +98,24 @@ describe("i18n language packs", () => {
     }
   });
 
+  it("formats fc_open_path launch acknowledgements natively in all six runtime languages", () => {
+    const expectations: Record<Lang, string> = {
+      de: "Öffnungsanforderung gestartet",
+      en: "Open request started",
+      es: "Solicitud de apertura iniciada",
+      zh: "已启动打开请求",
+      ja: "開く要求を開始しました",
+      ru: "Запрос на открытие запущен",
+    };
+
+    for (const lang of getSupportedLanguages()) {
+      setLanguage(lang);
+      expect(t().fc_open_path.launchRequested("C:/OneDrive/Prüfung ä.pdf", "win32")).toContain(expectations[lang]);
+      expect(t().fc_open_path.launchRequested("C:/OneDrive/Prüfung ä.pdf", "win32")).toContain("Prüfung ä.pdf");
+      expect(t().fc_open_path.noVisibleConfirmation).toBeTruthy();
+    }
+  });
+
   for (const lang of ["es", "zh", "ja", "ru"] as const) {
     it(`does not keep the old ${lang} English-fallback stub`, async () => {
       const source = await readFile(new URL(`../src/i18n/${lang}.ts`, import.meta.url), "utf-8");

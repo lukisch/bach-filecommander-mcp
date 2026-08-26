@@ -195,6 +195,17 @@ export interface Translations {
     startError: (msg: string) => string;
   };
 
+  // ==================== fc_open_path ====================
+  fc_open_path: {
+    description: string;
+    launchRequested: (targetPath: string, platform: string) => string;
+    noVisibleConfirmation: string;
+    notFound: (targetPath: string) => string;
+    unsupportedTarget: (targetPath: string) => string;
+    unsupportedPlatform: (platform: string) => string;
+    launchError: (msg: string) => string;
+  };
+
   // ==================== fc_get_time ====================
   fc_get_time: {
     header: string;

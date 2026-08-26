@@ -173,6 +173,16 @@ export const ru: Translations = {
     startError: (msg) => `\u274C Ошибка запуска процесса: ${msg}`,
   },
 
+  fc_open_path: {
+    description: 'Открывает существующий локальный файл или каталог в приложении операционной системы по умолчанию.',
+    launchRequested: (targetPath, platform) => `\uD83D\uDE80 Запрос на открытие запущен: ${targetPath} (платформа: ${platform})`,
+    noVisibleConfirmation: 'Системный механизм запуска принял запрос; видимое открытие целевого приложения автоматически не подтверждается.',
+    notFound: (targetPath) => `\u274C Путь не найден: ${targetPath}`,
+    unsupportedTarget: (targetPath) => `\u274C Путь не является обычным файлом или каталогом: ${targetPath}`,
+    unsupportedPlatform: (platform) => `\u274C Неподдерживаемая платформа: ${platform}`,
+    launchError: (msg) => `\u274C Ошибка запуска запроса на открытие: ${msg}`,
+  },
+
   fc_get_time: {
     header: `\uD83D\uDD50 **Текущее системное время**`,
     labelDate: 'Дата',

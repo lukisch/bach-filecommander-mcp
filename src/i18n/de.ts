@@ -193,6 +193,17 @@ export const de: Translations = {
     startError: (msg) => `\u274C Fehler beim Starten: ${msg}`,
   },
 
+  // ==================== fc_open_path ====================
+  fc_open_path: {
+    description: 'Öffnet eine vorhandene lokale Datei oder einen Ordner mit der Standardanwendung des Betriebssystems.',
+    launchRequested: (targetPath, platform) => `\uD83D\uDE80 Öffnungsanforderung gestartet: ${targetPath} (Plattform: ${platform})`,
+    noVisibleConfirmation: 'Der native Launcher hat die Anforderung angenommen; eine sichtbar geöffnete Zielanwendung wird nicht automatisch bestätigt.',
+    notFound: (targetPath) => `\u274C Pfad nicht gefunden: ${targetPath}`,
+    unsupportedTarget: (targetPath) => `\u274C Der Pfad ist weder eine normale Datei noch ein Ordner: ${targetPath}`,
+    unsupportedPlatform: (platform) => `\u274C Nicht unterstützte Plattform: ${platform}`,
+    launchError: (msg) => `\u274C Fehler beim Starten der Öffnungsanforderung: ${msg}`,
+  },
+
   // ==================== fc_get_time ====================
   fc_get_time: {
     header: `\uD83D\uDD50 **Aktuelle Systemzeit**`,

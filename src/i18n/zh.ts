@@ -173,6 +173,16 @@ export const zh: Translations = {
     startError: (msg) => `\u274C 启动进程时出错: ${msg}`,
   },
 
+  fc_open_path: {
+    description: '使用操作系统的默认应用程序打开现有的本地文件或目录。',
+    launchRequested: (targetPath, platform) => `\uD83D\uDE80 已启动打开请求: ${targetPath}（平台: ${platform}）`,
+    noVisibleConfirmation: '原生启动器已接受请求；不会自动确认目标应用程序已在界面中打开。',
+    notFound: (targetPath) => `\u274C 未找到路径: ${targetPath}`,
+    unsupportedTarget: (targetPath) => `\u274C 路径既不是普通文件也不是目录: ${targetPath}`,
+    unsupportedPlatform: (platform) => `\u274C 不支持的平台: ${platform}`,
+    launchError: (msg) => `\u274C 启动打开请求时出错: ${msg}`,
+  },
+
   fc_get_time: {
     header: `\uD83D\uDD50 **当前系统时间**`,
     labelDate: '日期',

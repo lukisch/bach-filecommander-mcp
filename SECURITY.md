@@ -20,6 +20,7 @@ By design, `ellmos-filecommander-mcp` provides AI assistants and MCP clients wit
 | `fc_execute_command` | **Critical** | Executes shell commands in the user environment. Client approval gates recommended. |
 | `fc_start_session` / `fc_send_input` | **Critical** | Starts and controls arbitrary interactive commands. Client approval gates recommended. |
 | `fc_start_process` | **High** | Spawns background processes. Monitored via process table. |
+| `fc_open_path` | **Medium** | Invokes the OS-associated application for a validated existing local path. The fixed launcher does not interpolate the target into a shell command, but the associated application runs with user permissions. |
 | `fc_kill_process` | **High** | Terminates processes by PID. Restricted to user-accessible processes. |
 | `fc_delete_file` | **High** | Permanent file deletion (bypasses recycle bin unless Safety Mode is active). |
 | `fc_delete_directory` | **High** | Recursive directory deletion. |
@@ -72,6 +73,7 @@ We aim to respond to security reports within 24 hours and provide timely remedia
 | `fc_execute_command` | **Kritisch** | Führt Shell-Befehle aus. Bestätigungsdialoge im MCP-Client empfohlen. |
 | `fc_start_session` / `fc_send_input` | **Kritisch** | Startet und steuert beliebige interaktive Befehle. Bestätigungsdialoge im MCP-Client empfohlen. |
 | `fc_start_process` | **Hoch** | Startet Hintergrundprozesse mit Benutzerrechten. |
+| `fc_open_path` | **Mittel** | Startet für einen geprüften vorhandenen lokalen Pfad die zugeordnete Betriebssystem-Anwendung. Der feste Launcher setzt den Zielpfad nicht in einen Shell-Befehl ein; die zugeordnete Anwendung läuft jedoch mit Benutzerrechten. |
 | `fc_kill_process` | **Hoch** | Beendet Prozesse anhand der PID. |
 | `fc_delete_file` | **Hoch** | Dauerhaftes Löschen von Dateien (umgeht Papierkorb, außer Safety Mode ist aktiv). |
 | `fc_delete_directory` | **Hoch** | Rekursives Löschen von Verzeichnissen. |

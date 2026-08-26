@@ -39,9 +39,9 @@ describe("language tools over real stdio MCP transport", () => {
     await client?.close();
   });
 
-  it("lists exactly 48 tools and the complete read-only fc_get_language contract", async () => {
+  it("lists exactly 49 tools and the complete language/open-path contracts", async () => {
     const listed = await client.listTools();
-    expect(listed.tools).toHaveLength(48);
+    expect(listed.tools).toHaveLength(49);
 
     const getLanguageTool = listed.tools.find((tool) => tool.name === "fc_get_language");
     expect(getLanguageTool).toBeDefined();
@@ -50,6 +50,15 @@ describe("language tools over real stdio MCP transport", () => {
       readOnlyHint: true,
       destructiveHint: false,
       idempotentHint: true,
+      openWorldHint: false,
+    });
+
+    const openPathTool = listed.tools.find((tool) => tool.name === "fc_open_path");
+    expect(openPathTool).toBeDefined();
+    expect(openPathTool?.annotations).toMatchObject({
+      readOnlyHint: false,
+      destructiveHint: false,
+      idempotentHint: false,
       openWorldHint: false,
     });
   });

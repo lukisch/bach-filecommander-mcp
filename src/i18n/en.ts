@@ -193,6 +193,17 @@ export const en: Translations = {
     startError: (msg) => `\u274C Error starting process: ${msg}`,
   },
 
+  // ==================== fc_open_path ====================
+  fc_open_path: {
+    description: 'Opens an existing local file or directory with the operating system default application.',
+    launchRequested: (targetPath, platform) => `\uD83D\uDE80 Open request started: ${targetPath} (platform: ${platform})`,
+    noVisibleConfirmation: 'The native launcher accepted the request; a visibly opened target application is not automatically confirmed.',
+    notFound: (targetPath) => `\u274C Path not found: ${targetPath}`,
+    unsupportedTarget: (targetPath) => `\u274C The path is neither a regular file nor a directory: ${targetPath}`,
+    unsupportedPlatform: (platform) => `\u274C Unsupported platform: ${platform}`,
+    launchError: (msg) => `\u274C Error starting open request: ${msg}`,
+  },
+
   // ==================== fc_get_time ====================
   fc_get_time: {
     header: `\uD83D\uDD50 **Current system time**`,

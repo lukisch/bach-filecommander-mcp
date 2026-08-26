@@ -12,8 +12,8 @@
 [![CI](https://github.com/ellmos-ai/ellmos-filecommander-mcp/actions/workflows/tests.yml/badge.svg)](https://github.com/ellmos-ai/ellmos-filecommander-mcp/actions/workflows/tests.yml)
 [![npm version](https://img.shields.io/npm/v/ellmos-filecommander-mcp.svg)](https://www.npmjs.com/package/ellmos-filecommander-mcp)
 [![Node.js](https://img.shields.io/badge/node-%3E%3D20-brightgreen.svg)](https://nodejs.org/)
-[![MCP Tools](https://img.shields.io/badge/MCP%20Tools-48-blueviolet.svg)](#tools-übersicht)
-[![Tests](https://img.shields.io/badge/tests-261%20passed%20(192%20vitest%20%2B%2069%20i18n)-brightgreen.svg)](#entwicklung)
+[![MCP Tools](https://img.shields.io/badge/MCP%20Tools-49-blueviolet.svg)](#tools-übersicht)
+[![Tests](https://img.shields.io/badge/tests-271%20passed%20(202%20vitest%20%2B%2069%20i18n)-brightgreen.svg)](#entwicklung)
 [![Security: Explicit Egress](https://img.shields.io/badge/security-local--first%20%7C%20explicit--egress-blue.svg)](SECURITY.md)
 [![Safe Delete](https://img.shields.io/badge/safety-papierkorb%20%7C%20trash-blue.svg)](#warum-filecommander)
 [![ellmos-ai](https://img.shields.io/badge/organization-ellmos--ai-purple.svg)](https://github.com/ellmos-ai)
@@ -24,7 +24,7 @@
 
 Ein umfassender **Model Context Protocol (MCP) Server**, der KI-Assistenten vollen Dateisystemzugriff, begrenzte Mehrdatei-Inhaltssuche, Prozessverwaltung, interaktive Shell-Sitzungen und asynchrone Dateinamensuche bietet.
 
-**48 Tools** in einem einzigen Server — alles, was ein KI-Agent für die Interaktion mit dem lokalen System braucht.
+**49 Tools** in einem einzigen Server — alles, was ein KI-Agent für die Interaktion mit dem lokalen System braucht.
 
 **Discovery-Suchbegriffe:** lokaler Dateisystem-MCP-Server, Mehrdatei-Inhaltssuche per MCP, Safe-Delete-MCP, Papierkorb-MCP-Server, Prozessverwaltungs-MCP, interaktive Shell per MCP, asynchrone Dateisuche für KI-Agenten, Cloud-Lock-sichere Dateioperationen, Markdown-zu-PDF-MCP, OCR-MCP-Server, ZIP-Archiv-MCP.
 
@@ -32,7 +32,7 @@ Ein umfassender **Model Context Protocol (MCP) Server**, der KI-Assistenten voll
 
 > [!NOTE]
 > **Für KI-Agenten & LLM-Integrationen:**
-> FileCommander bietet **48 spezialisierte Tools**, die über den Standard-stdio-Transport erreichbar sind. Alle Tool-Namen nutzen das `fc_`-Präfix zur Vermeidung von Namenskonflikten. Für LLMs stehen kompakte Kontextübersichten in [`llms.txt`](llms.txt) und [`server.json`](server.json) zur Verfügung.
+> FileCommander bietet **49 spezialisierte Tools**, die über den Standard-stdio-Transport erreichbar sind. Alle Tool-Namen nutzen das `fc_`-Präfix zur Vermeidung von Namenskonflikten. Für LLMs stehen kompakte Kontextübersichten in [`llms.txt`](llms.txt) und [`server.json`](server.json) zur Verfügung.
 
 ---
 
@@ -71,10 +71,10 @@ flowchart TD
         Stdio["Stdio Transport (JSON-RPC)"]
     end
 
-    subgraph Core["ellmos FileCommander Engine (48 Tools)"]
+    subgraph Core["ellmos FileCommander Engine (49 Tools)"]
         FS["Dateisystem-Engine\n(14 Tools: Lesen, Schreiben, Editieren, Safe-Delete, Cloud-Lock-sicher)"]
         Search["Such-Engine\n(6 Tools: explizite Inhaltssuche plus 5 asynchrone Dateinamensuchen)"]
-        Proc["Prozess- & REPL-Sitzungen\n(9 Tools: Exec, Hintergrundprozesse, interaktive REPLs)"]
+        Proc["Prozess- & REPL-Sitzungen\n(10 Tools: Exec, Standard-App-Öffnung, Hintergrundprozesse, interaktive REPLs)"]
         Repair["Reparatur & Formatkonverter\n(9 Tools: JSON-Fix, Mojibake-Fix, Duplikate, Format-Convert, Prüfsummen)"]
         Export["Export & Web-Fetch\n(3 Tools: Markdown->HTML/PDF, web_fetch)"]
         Sys["System, Dienstprogramme & i18n\n(7 Tools: OCR, ZIP, Cloud-Lock-Check, Safety-Mode, Zeit, Sprache setzen/abfragen)"]
@@ -143,7 +143,7 @@ sequenceDiagram
 | **Mojibake- & Dateireparatur-Engine** | `fc_fix_encoding`, `fc_fix_json` und `fc_cleanup_file` reparieren fehlerhafte UTF-8-Codierungen (27+ Muster), defekte JSON-Syntax, BOMs und NUL-Bytes. | Selbstheilende Dateipipelines bei plattformübergreifend beschädigten Text- und Datendateien. |
 | **Unprivilegierter Non-Elevation-Betrieb** | Ausgelegt und verifiziert für den Betrieb im unprivilegierten Standard-Benutzerkontext ohne Root-/Admin-Rechte. | Minimale Angriffsfläche nach dem Prinzip der geringsten Rechte (Least Privilege). |
 | **Sechssprachige Laufzeit-i18n-Engine** | Dynamische Sprachumschaltung und -abfrage (`fc_set_language`, `fc_get_language`) für Deutsch (`de`), Englisch (`en`), Spanisch (`es`), Chinesisch (`zh`), Japanisch (`ja`) und Russisch (`ru`). | Native mehrsprachige Entwicklererfahrung und verständliche Fehlerdiagnostik. |
-| **Multi-OS verifizierte CI-Matrix** | Vollständig getestet auf Windows, Ubuntu Linux und macOS unter Node.js 20, 22 und 24 mit 261 automatisierten Assertionen. | Durchgehende Plattformparität und Zuverlässigkeit. |
+| **Multi-OS verifizierte CI-Matrix** | Vollständig getestet auf Windows, Ubuntu Linux und macOS unter Node.js 20, 22 und 24 mit 271 automatisierten Assertionen. | Durchgehende Plattformparität und Zuverlässigkeit. |
 
 ---
 
@@ -252,14 +252,17 @@ Der Server kommuniziert über **stdio transport**. Verweisen Sie Ihren MCP-Clien
 | `fc_list_searches` | Alle aktiven/abgeschlossenen Suchen auflisten |
 | `fc_clear_search` | Abgeschlossene Suchen aus dem Speicher entfernen |
 
-### Prozessverwaltung (4 Tools)
+### Prozessverwaltung (5 Tools)
 
 | Tool | Beschreibung |
 |------|-------------|
 | `fc_execute_command` | Shell-Befehl ausführen (blockierend, mit Timeout) |
 | `fc_start_process` | Hintergrundprozess starten (nicht-blockierend) |
+| `fc_open_path` | Vorhandene lokale Datei oder Ordner prüfen und mit der Standardanwendung des Betriebssystems öffnen |
 | `fc_list_processes` | Laufende Systemprozesse auflisten |
 | `fc_kill_process` | Prozess nach PID oder Name beenden |
+
+`fc_open_path` akzeptiert ausschließlich eine vorhandene Datei oder einen Ordner und übergibt das Ziel an einen fest vorgegebenen nativen Standard-Handler. Das Tool bestätigt die Startanforderung, aber keine sichtbar geöffnete Oberfläche. Bei `fc_start_process` wählt der Aufrufer dagegen Programm und Argumente. `fc_execute_command` akzeptiert einen beliebigen Shell-Befehl: Für normale Befehle nutzt Node die Standardshell (`COMSPEC`/`cmd.exe` unter Windows); FileCommanders Windows-Pfad für Sonderzeichen kann über Windows PowerShell laufen.
 
 ### Interaktive Sitzungen (5 Tools)
 
@@ -325,7 +328,7 @@ Der Server kommuniziert über **stdio transport**. Verweisen Sie Ihren MCP-Clien
 |------|-------------|
 | `fc_web_fetch` | Ruft eine Webseite ab und gibt Inhalt je nach `mode` zurück: extract (sauberer Haupttext), raw (HTTP-Body), links, forms oder headers. Nur lesendes Netzwerk-Tool; SSRF-Schutz blockiert interne/private Ziele standardmäßig. |
 
-**Gesamt: 48 Tools**
+**Gesamt: 49 Tools**
 
 ---
 
@@ -338,7 +341,7 @@ Der Server kommuniziert über **stdio transport**. Verweisen Sie Ihren MCP-Clien
 | Explizite Mehrdatei-Inhaltssuche | Ja | Nein | Nein |
 | Asynchrone Hintergrundsuche | 5 Tools | Nein | Nein |
 | Interaktive Sitzungen (REPL) | 5 Tools | Ja | Nein |
-| Prozessverwaltung | 4 Tools | Ja | Nein |
+| Prozessverwaltung | 5 Tools | Ja | Nein |
 | Shell-Befehlsausführung | Ja | Ja | Nein |
 | String Replace mit Validierung | Ja | Ja | Nein |
 | Zeilenbasierte Dateibearbeitung | Ja | Nein | Nein |
@@ -356,7 +359,7 @@ Der Server kommuniziert über **stdio transport**. Verweisen Sie Ihren MCP-Clien
 | Excel / PDF-Unterstützung | PDF (über Browser) | Ja | Nein |
 | HTTP Transport | Nein | Nein | Nein |
 | Markdown zu HTML/PDF Export | Ja | Nein | Nein |
-| **Tools gesamt** | **48** | ~15 | ~11 |
+| **Tools gesamt** | **49** | ~15 | ~11 |
 | **Benötigte Server** | **1** | 1 | + extra für Prozesse |
 
 **Hauptunterscheidungsmerkmale:**
@@ -364,7 +367,7 @@ Der Server kommuniziert über **stdio transport**. Verweisen Sie Ihren MCP-Clien
 - Einziger MCP-Server mit **asynchroner Hintergrundsuche** mit Paginierung
 - Integrierte **JSON-Reparatur**, **Encoding-Korrektur** und **Duplikaterkennung**
 - Einziger MCP-Server mit **Cloud-Lock-sicheren Dateioperationen** (automatischer copy+delete-Fallback)
-- Umfassendste Einzelserver-Lösung (48 Tools)
+- Umfassendste Einzelserver-Lösung (49 Tools)
 - Integrierter **Safety Mode** zur Vermeidung versehentlicher permanenter Löschungen
 
 ---
@@ -386,7 +389,7 @@ FileCommander ist so dokumentiert, dass Menschen, LLMs und MCP-Verzeichnisse ihn
 
 Primäre Suchbegriffe: `ellmos-filecommander-mcp`, `FileCommander MCP`, `filesystem MCP server`, `multi-file content search MCP`, `safe delete MCP`, `async file search MCP`, `process management MCP`, `Markdown PDF MCP`.
 
-Externe Auffindbarkeit: npm und jsDelivr können dem aktuellen Release kurzzeitig hinterherhinken. LobeHub indexiert das GitHub-Repo als MCP-Server. Die Paketbeschreibung und diese README sind die kanonische 48-Tool-Referenz für den aktuellen Repository-Stand.
+Externe Auffindbarkeit: npm und jsDelivr können dem aktuellen Release kurzzeitig hinterherhinken. LobeHub indexiert das GitHub-Repo als MCP-Server. Die Paketbeschreibung und diese README sind die kanonische 49-Tool-Referenz für den aktuellen Repository-Stand.
 
 ---
 
@@ -398,6 +401,7 @@ Siehe [SECURITY.md](SECURITY.md) für detaillierte Sicherheitsinformationen und 
 
 Wichtige Punkte:
 - `fc_execute_command` führt beliebige Shell-Befehle aus
+- `fc_open_path` startet für einen vom Aufrufer gewählten vorhandenen Pfad die zugeordnete Betriebssystem-Anwendung; diese läuft mit den Berechtigungen des Benutzers
 - `fc_start_session` startet einen beliebigen interaktiven Befehl; nachfolgende `fc_send_input`-Aufrufe können weitere Aktionen ausführen
 - `fc_delete_*` Tools löschen standardmäßig permanent (verwenden Sie `fc_safe_delete` oder aktivieren Sie den **Safety Mode** über `fc_set_safe_mode`, um alle Löschvorgänge über den Papierkorb / Trash zu leiten)
 - Der Safety Mode schützt ausschließlich `fc_delete_file` und `fc_delete_directory`; er schränkt Befehle oder interaktive Sitzungen nicht ein
@@ -427,7 +431,7 @@ npm test
 
 ### Tests
 
-Das Projekt enthält **192 Vitest-Tests plus 69 eigenständige i18n-Prüfungen (261 insgesamt)** für Dateisystemoperationen, begrenzte Inhaltssuche, Formatkonvertierung, Encoding-Reparatur, Archiv-Handling, Duplikaterkennung, Sprachpakete, Tool-Annotationen, echtes stdio-Verhalten der Sprachwerkzeuge und Sicherheitsgrenzen.
+Das Projekt enthält **202 Vitest-Tests plus 69 eigenständige i18n-Prüfungen (271 insgesamt)** für Dateisystemoperationen, begrenzte Inhaltssuche, native Standard-Handler-Aufrufe, Formatkonvertierung, Encoding-Reparatur, Archiv-Handling, Duplikaterkennung, Sprachpakete, Tool-Annotationen, echtes stdio-Verhalten und Sicherheitsgrenzen.
 
 ```bash
 npm test              # Alle Tests ausführen
@@ -475,7 +479,7 @@ Dieser MCP-Server ist Teil des **[ellmos-ai](https://github.com/ellmos-ai)**-Ök
 
 | Server | Tools | Fokus | npm |
 |--------|-------|-------|-----|
-| **[FileCommander](https://github.com/ellmos-ai/ellmos-filecommander-mcp)** | **48** | **Dateisystem, Inhaltssuche, Prozessverwaltung, interaktive Sitzungen, Cloud-Lock-sichere Operationen** | **[`ellmos-filecommander-mcp`](https://www.npmjs.com/package/ellmos-filecommander-mcp)** |
+| **[FileCommander](https://github.com/ellmos-ai/ellmos-filecommander-mcp)** | **49** | **Dateisystem, Inhaltssuche, Standard-App-Öffnung, Prozessverwaltung, interaktive Sitzungen, Cloud-Lock-sichere Operationen** | **[`ellmos-filecommander-mcp`](https://www.npmjs.com/package/ellmos-filecommander-mcp)** |
 | [CodeCommander](https://github.com/ellmos-ai/ellmos-codecommander-mcp) | 22 | Code-Analyse, JSON-Reparatur, Imports, Diffs, Regex | [`ellmos-codecommander-mcp`](https://www.npmjs.com/package/ellmos-codecommander-mcp) |
 | [Clatcher](https://github.com/ellmos-ai/ellmos-clatcher-mcp) | 12 | Dateireparatur, Formatkonvertierung, Batch-Operationen | [`ellmos-clatcher-mcp`](https://www.npmjs.com/package/ellmos-clatcher-mcp) |
 | [n8n Manager](https://github.com/ellmos-ai/n8n-manager-mcp) | 19 | n8n-Workflow-Verwaltung über KI-Assistenten | [`n8n-manager-mcp`](https://www.npmjs.com/package/n8n-manager-mcp) |

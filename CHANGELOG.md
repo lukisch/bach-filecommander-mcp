@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.10.4] - 2026-08-26
+
+### Native default-handler path opening
+- Add `fc_open_path` for existing local files and directories on Windows, macOS, and Linux, with fixed native launchers and no shell interpolation of the target path.
+- Report only that the native launch request was accepted; do not claim that a graphical application became visible.
+- Add native output for all six runtime languages and document the trust boundary relative to `fc_start_process` and `fc_execute_command`.
+- Expand the real-path, injection-boundary, MCP annotation, registry, and localization contracts to 202 Vitest checks plus 69 standalone i18n checks (271 total); publish a synchronized 49-tool surface.
+
 ## [1.10.3] - 2026-08-26
 
 ### Runtime language introspection

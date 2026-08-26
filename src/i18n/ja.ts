@@ -173,6 +173,16 @@ export const ja: Translations = {
     startError: (msg) => `\u274C プロセス開始エラー: ${msg}`,
   },
 
+  fc_open_path: {
+    description: '既存のローカルファイルまたはディレクトリを、オペレーティングシステムの既定のアプリケーションで開きます。',
+    launchRequested: (targetPath, platform) => `\uD83D\uDE80 開く要求を開始しました: ${targetPath}（プラットフォーム: ${platform}）`,
+    noVisibleConfirmation: 'ネイティブランチャーが要求を受け付けました。対象アプリケーションが画面に表示されたことは自動的には確認されません。',
+    notFound: (targetPath) => `\u274C パスが見つかりません: ${targetPath}`,
+    unsupportedTarget: (targetPath) => `\u274C パスは通常ファイルでもディレクトリでもありません: ${targetPath}`,
+    unsupportedPlatform: (platform) => `\u274C サポートされていないプラットフォーム: ${platform}`,
+    launchError: (msg) => `\u274C 開く要求の開始エラー: ${msg}`,
+  },
+
   fc_get_time: {
     header: `\uD83D\uDD50 **現在のシステム時刻**`,
     labelDate: '日付',

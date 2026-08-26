@@ -9,7 +9,7 @@
  * See LICENSE file for details.
  *
  * @author Lukas (BACH)
- * @version 1.10.3
+ * @version 1.10.4
  * @license MIT
  */
 
@@ -44,6 +44,7 @@ import {
   type SearchContentErrorCode,
   type SearchContentResult,
 } from "./search-content.js";
+import { OpenPathError, openPath } from "./open-path.js";
 
 const execAsync = promisify(exec);
 const nodeRequire = createRequire(import.meta.url);
@@ -54,7 +55,7 @@ const nodeRequire = createRequire(import.meta.url);
 
 const server = new McpServer({
   name: "ellmos-filecommander-mcp",
-  version: "1.10.3"
+  version: "1.10.4"
 });
 
 // ============================================================================
@@ -1756,6 +1757,61 @@ Examples:
       return {
         isError: true,
         content: [{ type: "text", text: t().fc_start_process.startError(errorMsg) }]
+      };
+    }
+  }
+);
+
+// ============================================================================
+// Tool: Open Path
+// ============================================================================
+
+server.registerTool(
+  "fc_open_path",
+  {
+    title: "Open Path",
+    description: t().fc_open_path.description,
+    inputSchema: {
+      path: z.string().min(1).describe("Existing local file or directory to open")
+    },
+    annotations: {
+      readOnlyHint: false,
+      destructiveHint: false,
+      idempotentHint: false,
+      openWorldHint: false
+    }
+  },
+  async (params) => {
+    try {
+      const result = await openPath(params.path);
+      return {
+        content: [{
+          type: "text",
+          text: `${t().fc_open_path.launchRequested(result.resolvedPath, result.platform)}\n${t().fc_open_path.noVisibleConfirmation}`
+        }]
+      };
+    } catch (error) {
+      const openError = error instanceof OpenPathError ? error : undefined;
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      let text: string;
+
+      switch (openError?.code) {
+        case "PATH_NOT_FOUND":
+          text = t().fc_open_path.notFound(openError.targetPath ?? params.path);
+          break;
+        case "UNSUPPORTED_TARGET":
+          text = t().fc_open_path.unsupportedTarget(openError.targetPath ?? params.path);
+          break;
+        case "UNSUPPORTED_PLATFORM":
+          text = t().fc_open_path.unsupportedPlatform(openError.platform ?? "unknown");
+          break;
+        default:
+          text = t().fc_open_path.launchError(errorMsg);
+      }
+
+      return {
+        isError: true,
+        content: [{ type: "text", text }]
       };
     }
   }

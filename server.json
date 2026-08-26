@@ -1,9 +1,9 @@
 {
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
   "name": "io.github.ellmos-ai/ellmos-filecommander-mcp",
-  "version": "1.10.3",
+  "version": "1.10.4",
   "title": "ellmos FileCommander",
-  "description": "Filesystem MCP server: files, bounded explicit-file content search, processes, sessions, async search, OCR, archives, safe delete, and explicit read-only web fetch.",
+  "description": "Filesystem MCP server: files, bounded explicit-file content search, default-app path opening, processes, sessions, async search, OCR, archives, safe delete, and explicit read-only web fetch.",
   "websiteUrl": "https://github.com/ellmos-ai/ellmos-filecommander-mcp",
   "repository": {
     "url": "https://github.com/ellmos-ai/ellmos-filecommander-mcp",
@@ -14,7 +14,7 @@
     {
       "registryType": "npm",
       "identifier": "ellmos-filecommander-mcp",
-      "version": "1.10.3",
+      "version": "1.10.4",
       "transport": {
         "type": "stdio"
       },
