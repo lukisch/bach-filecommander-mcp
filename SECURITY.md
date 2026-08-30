@@ -21,6 +21,7 @@ By design, `ellmos-filecommander-mcp` provides AI assistants and MCP clients wit
 | `fc_start_session` / `fc_send_input` | **Critical** | Starts and controls arbitrary interactive commands. Client approval gates recommended. |
 | `fc_start_process` | **High** | Spawns background processes. Monitored via process table. |
 | `fc_open_path` | **Medium** | Invokes the OS-associated application for a validated existing local path. The fixed launcher does not interpolate the target into a shell command, but the associated application runs with user permissions. |
+| `fc_preview_file` | **Low** | Read-only, metadata-first preview. Content requires explicit `include_content=true`; unsupported files and files above the fixed 1 MiB limit are never read or Base64-encoded inline. |
 | `fc_kill_process` | **High** | Terminates processes by PID. Restricted to user-accessible processes. |
 | `fc_delete_file` | **High** | Permanent file deletion (bypasses recycle bin unless Safety Mode is active). |
 | `fc_delete_directory` | **High** | Recursive directory deletion. |
@@ -39,6 +40,7 @@ By design, `ellmos-filecommander-mcp` provides AI assistants and MCP clients wit
 4. **Transport Isolation**: Operates exclusively over standard input/output (`stdio`). Does not bind to network ports or expose HTTP endpoints.
 5. **Non-Elevation**: Designed to run as an unprivileged standard user process. Never requires administrative or root privileges.
 6. **Explicit outbound access**: The server makes no automatic network requests in MCP operation. `fc_web_fetch` is the explicit egress boundary and performs an outbound request only when called by a client.
+7. **Bounded inline preview**: `fc_preview_file` resolves a regular file and reports MIME/size metadata before content. Explicit content requests use standard MCP content blocks and are rejected before reading when the file exceeds 1 MiB or its media type is unsupported.
 
 ### Reporting Vulnerabilities
 
@@ -52,8 +54,8 @@ We aim to respond to security reports within 24 hours and provide timely remedia
 
 | Version | Supported |
 |---------|-----------|
-| 1.10.x  | :white_check_mark: Yes |
-| < 1.10  | :x: No (Please upgrade) |
+| 1.11.x  | :white_check_mark: Yes |
+| < 1.11  | :x: No (Please upgrade) |
 
 ---
 
@@ -74,6 +76,7 @@ We aim to respond to security reports within 24 hours and provide timely remedia
 | `fc_start_session` / `fc_send_input` | **Kritisch** | Startet und steuert beliebige interaktive Befehle. Bestätigungsdialoge im MCP-Client empfohlen. |
 | `fc_start_process` | **Hoch** | Startet Hintergrundprozesse mit Benutzerrechten. |
 | `fc_open_path` | **Mittel** | Startet für einen geprüften vorhandenen lokalen Pfad die zugeordnete Betriebssystem-Anwendung. Der feste Launcher setzt den Zielpfad nicht in einen Shell-Befehl ein; die zugeordnete Anwendung läuft jedoch mit Benutzerrechten. |
+| `fc_preview_file` | **Niedrig** | Nur lesende, metadatenbasierte Vorschau. Inhalt erfordert ausdrücklich `include_content=true`; nicht unterstützte Dateien und Dateien über dem festen 1-MiB-Limit werden nie inline gelesen oder Base64-kodiert. |
 | `fc_kill_process` | **Hoch** | Beendet Prozesse anhand der PID. |
 | `fc_delete_file` | **Hoch** | Dauerhaftes Löschen von Dateien (umgeht Papierkorb, außer Safety Mode ist aktiv). |
 | `fc_delete_directory` | **Hoch** | Rekursives Löschen von Verzeichnissen. |
@@ -92,6 +95,7 @@ We aim to respond to security reports within 24 hours and provide timely remedia
 4. **Transport-Isolation**: Ausschließliche Kommunikation über Standard-Ein-/Ausgabe (`stdio`). Keine Netzwerk-Ports, keine offenen Sockets.
 5. **Keine Rechteerweiterung (Non-Elevation)**: Vollständiger Verzicht auf Administrator-/Root-Berechtigungen.
 6. **Expliziter ausgehender Zugriff**: Im MCP-Betrieb erfolgen keine automatischen Netzwerkanfragen. `fc_web_fetch` ist die ausdrückliche Egress-Grenze und sendet nur nach einem Client-Aufruf eine ausgehende Anfrage.
+7. **Begrenzte Inline-Vorschau**: `fc_preview_file` löst eine reguläre Datei auf und meldet zuerst MIME-/Größenmetadaten. Ausdrückliche Inhaltsnachforderungen verwenden Standard-MCP-Content-Blocks und werden vor dem Lesen abgewiesen, wenn die Datei größer als 1 MiB oder ihr Medientyp nicht unterstützt ist.
 
 ### Schwachstellen melden
 
@@ -103,5 +107,5 @@ Bitte melden Sie gefundene Sicherheitslücken direkt an:
 
 | Version | Unterstützt |
 |---------|-------------|
-| 1.10.x  | :white_check_mark: Ja |
-| < 1.10  | :x: Nein (Bitte aktualisieren) |
+| 1.11.x  | :white_check_mark: Ja |
+| < 1.11  | :x: Nein (Bitte aktualisieren) |

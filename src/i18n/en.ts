@@ -195,13 +195,22 @@ export const en: Translations = {
 
   // ==================== fc_open_path ====================
   fc_open_path: {
-    description: 'Opens an existing local file or directory with the operating system default application.',
+    description: 'Starts the operating system default application for an existing local file or directory. Structured output separates launcher_accepted from user_visible=unknown and identifies a remote fallback.',
     launchRequested: (targetPath, platform) => `\uD83D\uDE80 Open request started: ${targetPath} (platform: ${platform})`,
     noVisibleConfirmation: 'The native launcher accepted the request; a visibly opened target application is not automatically confirmed.',
+    fallbackRecommended: (fallback) => `Remote/headless fallback: ${fallback}`,
     notFound: (targetPath) => `\u274C Path not found: ${targetPath}`,
     unsupportedTarget: (targetPath) => `\u274C The path is neither a regular file nor a directory: ${targetPath}`,
     unsupportedPlatform: (platform) => `\u274C Unsupported platform: ${platform}`,
     launchError: (msg) => `\u274C Error starting open request: ${msg}`,
+  },
+
+  // ==================== fc_preview_file ====================
+  fc_preview_file: {
+    description: 'Returns MIME type, size, and preview eligibility first. Content is returned only after include_content=true and only within the fixed inline limit, using standard MCP text, image, or resource content.',
+    metadataOnly: (targetPath, mimeType, sizeBytes, reason) => `File metadata: ${targetPath} (${mimeType}, ${sizeBytes} bytes; ${reason}).`,
+    contentIncluded: (targetPath, mimeType, sizeBytes) => `Inline content: ${targetPath} (${mimeType}, ${sizeBytes} bytes).`,
+    previewError: (targetPath, msg) => `\u274C Preview error for ${targetPath}: ${msg}`,
   },
 
   // ==================== fc_get_time ====================

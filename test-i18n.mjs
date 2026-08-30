@@ -60,7 +60,7 @@ const sections = [
   'fc_delete_file', 'fc_delete_directory', 'fc_move', 'fc_copy', 'fc_file_info',
   'fc_search_files', 'fc_search_content', 'fc_start_search', 'fc_get_search_results', 'fc_stop_search',
   'fc_list_searches', 'fc_clear_search', 'fc_safe_delete', 'fc_execute_command',
-  'fc_start_process', 'fc_get_time', 'fc_read_multiple_files', 'fc_edit_file',
+  'fc_start_process', 'fc_open_path', 'fc_preview_file', 'fc_get_time', 'fc_read_multiple_files', 'fc_edit_file',
   'fc_str_replace', 'fc_list_processes', 'fc_kill_process', 'fc_start_session',
   'fc_read_output', 'fc_send_input', 'fc_list_sessions', 'fc_close_session',
   'fc_fix_json', 'fc_validate_json', 'fc_cleanup_file', 'fc_fix_encoding',

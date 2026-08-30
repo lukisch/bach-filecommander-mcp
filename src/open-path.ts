@@ -39,6 +39,31 @@ export interface OpenPathResult {
   platform: NodeJS.Platform;
   targetType: "file" | "directory";
   launcher: "powershell.exe" | "open" | "xdg-open";
+  launcherAccepted: true;
+  userVisible: "unknown";
+  fallback: OpenPathFallback;
+}
+
+export type OpenPathFallback =
+  | {
+    tool: "fc_preview_file";
+    arguments: { path: string; include_content: false };
+  }
+  | {
+    tool: "fc_list_directory";
+    arguments: { path: string; depth: 1 };
+  };
+
+export interface OpenPathStructuredContent {
+  [key: string]: unknown;
+  launcher_accepted: boolean;
+  user_visible: "unknown";
+  path: string | null;
+  platform: string | null;
+  target_type: "file" | "directory" | null;
+  launcher: OpenPathResult["launcher"] | null;
+  fallback: OpenPathFallback | null;
+  error_code: OpenPathErrorCode | null;
 }
 
 const WINDOWS_TARGET_ENV = "ELLMOS_FILECOMMANDER_OPEN_PATH";
@@ -61,10 +86,54 @@ export class OpenPathError extends Error {
     message: string,
     public readonly targetPath?: string,
     public readonly platform?: NodeJS.Platform,
+    public readonly targetType?: OpenPathResult["targetType"],
+    public readonly fallback?: OpenPathFallback,
+    public readonly launcher?: OpenPathResult["launcher"],
   ) {
     super(message);
     this.name = "OpenPathError";
   }
+}
+
+function fallbackFor(targetType: OpenPathResult["targetType"], resolvedPath: string): OpenPathFallback {
+  return targetType === "file"
+    ? {
+      tool: "fc_preview_file",
+      arguments: { path: resolvedPath, include_content: false },
+    }
+    : {
+      tool: "fc_list_directory",
+      arguments: { path: resolvedPath, depth: 1 },
+    };
+}
+
+export function createOpenPathStructuredContent(result: OpenPathResult): OpenPathStructuredContent {
+  return {
+    launcher_accepted: result.launcherAccepted,
+    user_visible: result.userVisible,
+    path: result.resolvedPath,
+    platform: result.platform,
+    target_type: result.targetType,
+    launcher: result.launcher,
+    fallback: result.fallback,
+    error_code: null,
+  };
+}
+
+export function createOpenPathErrorStructuredContent(
+  error: OpenPathError,
+  requestedPath: string,
+): OpenPathStructuredContent {
+  return {
+    launcher_accepted: false,
+    user_visible: "unknown",
+    path: error.targetPath ?? resolve(requestedPath),
+    platform: error.platform ?? process.platform,
+    target_type: error.targetType ?? null,
+    launcher: error.launcher ?? null,
+    fallback: error.fallback ?? null,
+    error_code: error.code,
+  };
 }
 
 export async function openPath(
@@ -153,6 +222,8 @@ export async function openPath(
       `Unsupported platform: ${platform}`,
       resolvedPath,
       platform,
+      targetType,
+      fallbackFor(targetType, resolvedPath),
     );
   }
 
@@ -172,8 +243,19 @@ export async function openPath(
       `Default-handler launch request failed: ${message}`,
       resolvedPath,
       platform,
+      targetType,
+      fallbackFor(targetType, resolvedPath),
+      launcher,
     );
   }
 
-  return { resolvedPath, platform, targetType, launcher };
+  return {
+    resolvedPath,
+    platform,
+    targetType,
+    launcher,
+    launcherAccepted: true,
+    userVisible: "unknown",
+    fallback: fallbackFor(targetType, resolvedPath),
+  };
 }

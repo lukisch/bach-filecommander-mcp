@@ -12,8 +12,8 @@
 [![CI](https://github.com/ellmos-ai/ellmos-filecommander-mcp/actions/workflows/tests.yml/badge.svg)](https://github.com/ellmos-ai/ellmos-filecommander-mcp/actions/workflows/tests.yml)
 [![npm version](https://img.shields.io/npm/v/ellmos-filecommander-mcp.svg)](https://www.npmjs.com/package/ellmos-filecommander-mcp)
 [![Node.js](https://img.shields.io/badge/node-%3E%3D20-brightgreen.svg)](https://nodejs.org/)
-[![MCP Tools](https://img.shields.io/badge/MCP%20Tools-49-blueviolet.svg)](#tools-overview)
-[![Tests](https://img.shields.io/badge/tests-271%20passed%20(202%20vitest%20%2B%2069%20i18n)-brightgreen.svg)](#testing)
+[![MCP Tools](https://img.shields.io/badge/MCP%20Tools-50-blueviolet.svg)](#tools-overview)
+[![Tests](https://img.shields.io/badge/tests-283%20passed%20(212%20vitest%20%2B%2071%20i18n)-brightgreen.svg)](#testing)
 [![Security: Explicit Egress](https://img.shields.io/badge/security-local--first%20%7C%20explicit--egress-blue.svg)](SECURITY.md)
 [![Safe Delete](https://img.shields.io/badge/safety-recycle--bin%20%7C%20trash-blue.svg)](#why-filecommander)
 [![ellmos-ai](https://img.shields.io/badge/organization-ellmos--ai-purple.svg)](https://github.com/ellmos-ai)
@@ -24,7 +24,7 @@
 
 A comprehensive **Model Context Protocol (MCP) server** that gives AI assistants full filesystem access, bounded multi-file content search, process management, interactive shell sessions, and async filename search capabilities.
 
-**49 tools** in a single server - everything an AI agent needs to interact with the local system.
+**50 tools** in a single server - everything an AI agent needs to interact with the local system.
 
 **Discovery keywords:** local filesystem MCP server, multi-file content search MCP, safe delete MCP, Recycle Bin MCP server, process management MCP, interactive shell MCP, async file search for AI agents, cloud-lock-safe file operations, Markdown to PDF MCP, OCR MCP server, ZIP archive MCP.
 
@@ -32,7 +32,7 @@ A comprehensive **Model Context Protocol (MCP) server** that gives AI assistants
 
 > [!NOTE]
 > **For AI Agents & LLM Integrations:**
-> FileCommander provides **49 specialized tools** accessible via standard stdio transport. All tool names use the `fc_` prefix to prevent namespace collisions. For LLMs, compact context and schema overviews are available in [`llms.txt`](llms.txt) and [`server.json`](server.json).
+> FileCommander provides **50 specialized tools** accessible via standard stdio transport. All tool names use the `fc_` prefix to prevent namespace collisions. For LLMs, compact context and schema overviews are available in [`llms.txt`](llms.txt) and [`server.json`](server.json).
 
 ---
 
@@ -71,8 +71,8 @@ flowchart TD
         Stdio["Stdio Transport (JSON-RPC)"]
     end
 
-    subgraph Core["ellmos FileCommander Engine (49 Tools)"]
-        FS["Filesystem Engine\n(14 tools: read, write, edit, safe-delete, cloud-lock safe)"]
+    subgraph Core["ellmos FileCommander Engine (50 Tools)"]
+        FS["Filesystem Engine\n(15 tools: read, bounded preview, write, edit, safe-delete, cloud-lock safe)"]
         Search["Search Engine\n(6 tools: explicit content search plus 5 async filename-search tools)"]
         Proc["Process & REPL Sessions\n(10 tools: exec, default-app opening, background proc, interactive REPLs)"]
         Repair["Repair & Format Converter\n(9 tools: JSON fix, Mojibake fix, duplicates, format convert, checksum)"]
@@ -143,7 +143,7 @@ sequenceDiagram
 | **Mojibake & File Repair Engine** | `fc_fix_encoding`, `fc_fix_json`, and `fc_cleanup_file` repair broken UTF-8 encoding (27+ patterns), malformed JSON syntax, BOMs, and NUL bytes. | Self-healing pipelines for corrupted files generated across divergent OS platforms. |
 | **Unprivileged Non-Elevation Execution** | Designed and verified to run in standard unprivileged user-mode. Never requires administrative or root privileges. | Minimal attack surface; adheres to the principle of least privilege. |
 | **Six-language Runtime i18n Engine** | Dynamic language switching and introspection (`fc_set_language`, `fc_get_language`) for German (`de`), English (`en`), Spanish (`es`), Chinese (`zh`), Japanese (`ja`), and Russian (`ru`). | Native multilingual developer experience and localized error reporting. |
-| **Multi-OS Verified Matrix** | Tested across Windows, Ubuntu Linux, and macOS on Node.js 20, 22, and 24 with 271 automated assertions. | Continuous cross-platform parity and reliability. |
+| **Multi-OS Verified Matrix** | Tested across Windows, Ubuntu Linux, and macOS on Node.js 20, 22, and 24 with 283 automated assertions. | Continuous cross-platform parity and reliability. |
 
 ---
 
@@ -215,11 +215,12 @@ The server communicates via **stdio transport**. Point your MCP client to the `d
 
 ## Tools Overview
 
-### Filesystem Operations (14 tools)
+### Filesystem Operations (15 tools)
 
 | Tool | Description |
 |------|-------------|
 | `fc_read_file` | Read file contents with optional line limit |
+| `fc_preview_file` | Inspect MIME type and size first, then explicitly request bounded inline MCP content |
 | `fc_read_multiple_files` | Read up to 20 files in a single call |
 | `fc_write_file` | Write/create/append to files |
 | `fc_edit_file` | Line-based editing (replace, insert, delete lines) |
@@ -233,6 +234,8 @@ The server communicates via **stdio transport**. Point your MCP client to the `d
 | `fc_copy` | Copy files and directories |
 | `fc_file_info` | Get detailed file metadata (size, dates, type) |
 | `fc_search_files` | Synchronous file search with wildcard patterns |
+
+`fc_preview_file` is the remote/headless fallback for local files. Its default call returns structured metadata only: resolved path, `file://` URI, MIME type, byte size, preview kind, fixed 1 MiB limit, and the exact follow-up call. Content is read only after `include_content=true`. Eligible text and raster images use standard MCP `text`/`image` content blocks; PDFs use a bounded embedded `resource`. Files above 1 MiB and unsupported types remain metadata-only and are never read or Base64-encoded by the preview path.
 
 ### Content Search (1 tool)
 
@@ -262,7 +265,7 @@ The server communicates via **stdio transport**. Point your MCP client to the `d
 | `fc_list_processes` | List running system processes |
 | `fc_kill_process` | Terminate a process by PID or name |
 
-`fc_open_path` accepts only an existing file or directory and sends it to a fixed native default-handler launcher; it acknowledges the launch request but does not claim that a GUI became visible. `fc_start_process` instead lets the caller choose an executable and arguments. `fc_execute_command` accepts an arbitrary shell command: Node's default shell is used for ordinary commands (`COMSPEC`/`cmd.exe` on Windows), while FileCommander's Windows special-character path can route through Windows PowerShell.
+`fc_open_path` accepts only an existing file or directory and sends it to a fixed native default-handler launcher. Its structured result reports `launcher_accepted=true|false`, always reports `user_visible="unknown"`, and identifies a machine-readable fallback: `fc_preview_file` with metadata-only arguments for files or `fc_list_directory` for directories. Launcher acceptance never claims that a GUI became visible. `fc_start_process` instead lets the caller choose an executable and arguments. `fc_execute_command` accepts an arbitrary shell command: Node's default shell is used for ordinary commands (`COMSPEC`/`cmd.exe` on Windows), while FileCommander's Windows special-character path can route through Windows PowerShell.
 
 ### Interactive Sessions (5 tools)
 
@@ -328,7 +331,7 @@ The server communicates via **stdio transport**. Point your MCP client to the `d
 |------|-------------|
 | `fc_web_fetch` | Fetch a web page and return content by `mode`: extract (clean main text), raw (HTTP body), links, forms, or headers. Read-only network tool; SSRF guard blocks internal/private targets by default. |
 
-**Total: 49 tools**
+**Total: 50 tools**
 
 ---
 
@@ -359,7 +362,7 @@ The server communicates via **stdio transport**. Point your MCP client to the `d
 | Excel / PDF support | PDF (via browser) | Yes | No |
 | HTTP transport | No | No | No |
 | Markdown to HTML/PDF export | Yes | No | No |
-| **Total tools** | **49** | ~15 | ~11 |
+| **Total tools** | **50** | ~15 | ~11 |
 | **Servers needed** | **1** | 1 | + extra for processes |
 
 **Key differentiators:**
@@ -367,7 +370,7 @@ The server communicates via **stdio transport**. Point your MCP client to the `d
 - Only MCP server with **async background search** with pagination
 - Built-in **JSON repair**, **encoding fix**, and **duplicate detection**
 - Only MCP server with **cloud-lock-safe file operations** (automatic copy+delete fallback)
-- Most comprehensive single-server solution (49 tools)
+- Most comprehensive single-server solution (50 tools)
 - Built-in **safety mode** to prevent accidental permanent deletion
 
 ---
@@ -389,7 +392,7 @@ FileCommander is designed to be discoverable by both people and AI agents:
 
 Primary search terms: `ellmos-filecommander-mcp`, `FileCommander MCP`, `filesystem MCP server`, `multi-file content search MCP`, `safe delete MCP`, `async file search MCP`, `process management MCP`, `Markdown PDF MCP`.
 
-External discovery notes: npm and jsDelivr may briefly lag behind the current release. LobeHub indexes the GitHub repo as an MCP server. Use the package description and this README as the canonical 49-tool source for the current repository.
+External discovery notes: npm and jsDelivr may briefly lag behind the current release. LobeHub indexes the GitHub repo as an MCP server. Use the package description and this README as the canonical 50-tool source for the current repository.
 
 ---
 
@@ -402,6 +405,7 @@ See [SECURITY.md](SECURITY.md) for detailed security information and recommendat
 Key points:
 - `fc_execute_command` runs arbitrary shell commands
 - `fc_open_path` invokes the operating system's associated application for a caller-selected existing path; that application runs with the user's permissions
+- `fc_open_path` reports launcher acceptance separately from the invariant `user_visible="unknown"`; `fc_preview_file` is the metadata-first remote fallback with an explicit 1 MiB inline-content boundary
 - `fc_start_session` starts an arbitrary interactive command, and subsequent `fc_send_input` calls can execute additional actions
 - `fc_delete_*` tools perform permanent deletion by default (use `fc_safe_delete` or enable **safe mode** via `fc_set_safe_mode` to route all deletes through Recycle Bin / Trash)
 - Safe mode protects only `fc_delete_file` and `fc_delete_directory`; it does not sandbox commands or interactive sessions
@@ -431,7 +435,7 @@ npm test
 
 ### Testing
 
-The project includes **202 Vitest tests plus 69 standalone i18n checks (271 total)** covering filesystem operations, bounded content search, native default-handler launching, format conversion, encoding repair, archive handling, duplicate detection, language packs, tool annotations, real stdio behavior, and security boundaries.
+The project includes **212 Vitest tests plus 71 standalone i18n checks (283 total)** covering filesystem operations, metadata-first inline preview, bounded content search, native default-handler launching, format conversion, encoding repair, archive handling, duplicate detection, language packs, tool annotations, real stdio behavior, and security boundaries.
 
 ```bash
 npm test              # Run all tests
@@ -480,7 +484,7 @@ This MCP server is part of the **[ellmos-ai](https://github.com/ellmos-ai)** eco
 
 | Server | Tools | Focus | npm |
 |--------|-------|-------|-----|
-| **[FileCommander](https://github.com/ellmos-ai/ellmos-filecommander-mcp)** | **49** | **Filesystem, content search, default-app opening, process management, interactive sessions, cloud-lock-safe operations** | **[`ellmos-filecommander-mcp`](https://www.npmjs.com/package/ellmos-filecommander-mcp)** |
+| **[FileCommander](https://github.com/ellmos-ai/ellmos-filecommander-mcp)** | **50** | **Filesystem, bounded inline preview, content search, default-app opening, process management, interactive sessions, cloud-lock-safe operations** | **[`ellmos-filecommander-mcp`](https://www.npmjs.com/package/ellmos-filecommander-mcp)** |
 | [CodeCommander](https://github.com/ellmos-ai/ellmos-codecommander-mcp) | 22 | Code analysis, JSON repair, imports, diffs, regex | [`ellmos-codecommander-mcp`](https://www.npmjs.com/package/ellmos-codecommander-mcp) |
 | [Clatcher](https://github.com/ellmos-ai/ellmos-clatcher-mcp) | 12 | File repair, format conversion, batch operations | [`ellmos-clatcher-mcp`](https://www.npmjs.com/package/ellmos-clatcher-mcp) |
 | [n8n Manager](https://github.com/ellmos-ai/n8n-manager-mcp) | 19 | n8n workflow management via AI assistants | [`n8n-manager-mcp`](https://www.npmjs.com/package/n8n-manager-mcp) |

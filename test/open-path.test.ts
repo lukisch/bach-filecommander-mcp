@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
+  createOpenPathStructuredContent,
   OpenPathError,
   openPath,
   type OpenPathSpawn,
@@ -66,6 +67,25 @@ describe("openPath", () => {
       platform: "win32",
       targetType: "file",
       launcher: "powershell.exe",
+      launcherAccepted: true,
+      userVisible: "unknown",
+      fallback: {
+        tool: "fc_preview_file",
+        arguments: { path: expectedPath, include_content: false },
+      },
+    });
+    expect(createOpenPathStructuredContent(result)).toEqual({
+      launcher_accepted: true,
+      user_visible: "unknown",
+      path: expectedPath,
+      platform: "win32",
+      target_type: "file",
+      launcher: "powershell.exe",
+      fallback: {
+        tool: "fc_preview_file",
+        arguments: { path: expectedPath, include_content: false },
+      },
+      error_code: null,
     });
     expect(launcher.calls).toHaveLength(1);
     expect(launcher.calls[0].command).toBe("C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe");
@@ -92,6 +112,10 @@ describe("openPath", () => {
 
     expect(result.targetType).toBe("directory");
     expect(result.resolvedPath).toBe(expectedPath);
+    expect(result.fallback).toEqual({
+      tool: "fc_list_directory",
+      arguments: { path: expectedPath, depth: 1 },
+    });
   });
 
   it("keeps a Windows target containing shell metacharacters out of command and arguments", async () => {

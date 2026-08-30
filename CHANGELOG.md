@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.11.0] - 2026-08-30
+
+### Remote/headless open-path contract
+- Return a validated `fc_open_path` `outputSchema` and `structuredContent` with `launcher_accepted`, the invariant `user_visible: "unknown"`, and a machine-readable fallback tool plus arguments on both accepted and rejected launcher requests.
+- Add read-only `fc_preview_file`: metadata and MIME type first, content only after explicit `include_content=true`, and a fixed 1 MiB inline limit checked before any file read or Base64 encoding.
+- Use standard MCP text and image content blocks plus bounded embedded resources for PDFs; unsupported media types remain metadata-only.
+- Synchronize the 50-tool surface, six runtime languages, EN/DE documentation, security policy, manifests, and tests.
+
 ## [1.10.4] - 2026-08-26
 
 ### Native default-handler path opening

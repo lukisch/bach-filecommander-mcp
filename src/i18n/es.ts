@@ -174,13 +174,21 @@ export const es: Translations = {
   },
 
   fc_open_path: {
-    description: 'Abre un archivo o directorio local existente con la aplicación predeterminada del sistema operativo.',
+    description: 'Inicia la aplicación predeterminada del sistema para un archivo o directorio local existente. La salida estructurada separa launcher_accepted de user_visible=unknown e identifica una alternativa remota.',
     launchRequested: (targetPath, platform) => `\uD83D\uDE80 Solicitud de apertura iniciada: ${targetPath} (plataforma: ${platform})`,
     noVisibleConfirmation: 'El iniciador nativo aceptó la solicitud; no se confirma automáticamente que la aplicación de destino se haya abierto de forma visible.',
+    fallbackRecommended: (fallback) => `Alternativa remota/headless: ${fallback}`,
     notFound: (targetPath) => `\u274C Ruta no encontrada: ${targetPath}`,
     unsupportedTarget: (targetPath) => `\u274C La ruta no es un archivo normal ni un directorio: ${targetPath}`,
     unsupportedPlatform: (platform) => `\u274C Plataforma no compatible: ${platform}`,
     launchError: (msg) => `\u274C Error al iniciar la solicitud de apertura: ${msg}`,
+  },
+
+  fc_preview_file: {
+    description: 'Devuelve primero el tipo MIME, el tamaño y la capacidad de vista previa. El contenido solo se devuelve tras include_content=true y dentro del límite fijo, mediante contenido MCP de texto, imagen o recurso.',
+    metadataOnly: (targetPath, mimeType, sizeBytes, reason) => `Metadatos del archivo: ${targetPath} (${mimeType}, ${sizeBytes} bytes; ${reason}).`,
+    contentIncluded: (targetPath, mimeType, sizeBytes) => `Contenido en línea: ${targetPath} (${mimeType}, ${sizeBytes} bytes).`,
+    previewError: (targetPath, msg) => `\u274C Error de vista previa para ${targetPath}: ${msg}`,
   },
 
   fc_get_time: {

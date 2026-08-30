@@ -33,15 +33,15 @@ describe("language tools over real stdio MCP transport", () => {
       stderr: "pipe",
     });
     await client.connect(transport);
-  }, 20_000);
+  }, 40_000);
 
   afterAll(async () => {
     await client?.close();
   });
 
-  it("lists exactly 49 tools and the complete language/open-path contracts", async () => {
+  it("lists exactly 50 tools and the complete language/open-path/preview contracts", async () => {
     const listed = await client.listTools();
-    expect(listed.tools).toHaveLength(49);
+    expect(listed.tools).toHaveLength(50);
 
     const getLanguageTool = listed.tools.find((tool) => tool.name === "fc_get_language");
     expect(getLanguageTool).toBeDefined();
@@ -60,6 +60,75 @@ describe("language tools over real stdio MCP transport", () => {
       destructiveHint: false,
       idempotentHint: false,
       openWorldHint: false,
+    });
+    expect(openPathTool?.outputSchema).toMatchObject({
+      type: "object",
+      required: expect.arrayContaining(["launcher_accepted", "user_visible", "fallback"]),
+    });
+
+    const previewTool = listed.tools.find((tool) => tool.name === "fc_preview_file");
+    expect(previewTool).toBeDefined();
+    expect(previewTool?.inputSchema).toMatchObject({
+      type: "object",
+      properties: {
+        include_content: { type: "boolean", default: false },
+      },
+    });
+    expect(previewTool?.outputSchema).toMatchObject({
+      type: "object",
+      required: expect.arrayContaining(["mime_type", "size_bytes", "content_included"]),
+    });
+    expect(previewTool?.annotations).toMatchObject({
+      readOnlyHint: true,
+      destructiveHint: false,
+      idempotentHint: true,
+      openWorldHint: false,
+    });
+  });
+
+  it("serves metadata first and content only after an explicit preview request", async () => {
+    const target = resolve(ROOT, "README.md");
+    const metadata = await client.callTool({
+      name: "fc_preview_file",
+      arguments: { path: target },
+    });
+    expect("structuredContent" in metadata && metadata.structuredContent).toMatchObject({
+      path: target,
+      mime_type: "text/markdown",
+      content_requested: false,
+      content_included: false,
+      content_request: {
+        tool: "fc_preview_file",
+        arguments: { path: target, include_content: true },
+      },
+    });
+    expect("content" in metadata && metadata.content.some((item) => item.type !== "text")).toBe(false);
+
+    const inline = await client.callTool({
+      name: "fc_preview_file",
+      arguments: { path: target, include_content: true },
+    });
+    expect("structuredContent" in inline && inline.structuredContent).toMatchObject({
+      content_requested: true,
+      content_included: true,
+      reason: "included",
+    });
+    expect("content" in inline && inline.content.some((item) => item.type === "text" && item.text.includes("FileCommander"))).toBe(true);
+  });
+
+  it("returns launcher_accepted=false without visibility claims when opening cannot start", async () => {
+    const missing = resolve(ROOT, "test", "fixtures", "does-not-exist.png");
+    const result = await client.callTool({
+      name: "fc_open_path",
+      arguments: { path: missing },
+    });
+
+    expect("isError" in result && result.isError).toBe(true);
+    expect("structuredContent" in result && result.structuredContent).toMatchObject({
+      launcher_accepted: false,
+      user_visible: "unknown",
+      error_code: "PATH_NOT_FOUND",
+      fallback: null,
     });
   });
 

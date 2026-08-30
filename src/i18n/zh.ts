@@ -174,13 +174,21 @@ export const zh: Translations = {
   },
 
   fc_open_path: {
-    description: '使用操作系统的默认应用程序打开现有的本地文件或目录。',
+    description: '为现有本地文件或目录启动操作系统默认应用程序。结构化输出区分 launcher_accepted 与 user_visible=unknown，并给出远程回退操作。',
     launchRequested: (targetPath, platform) => `\uD83D\uDE80 已启动打开请求: ${targetPath}（平台: ${platform}）`,
     noVisibleConfirmation: '原生启动器已接受请求；不会自动确认目标应用程序已在界面中打开。',
+    fallbackRecommended: (fallback) => `远程/无界面回退: ${fallback}`,
     notFound: (targetPath) => `\u274C 未找到路径: ${targetPath}`,
     unsupportedTarget: (targetPath) => `\u274C 路径既不是普通文件也不是目录: ${targetPath}`,
     unsupportedPlatform: (platform) => `\u274C 不支持的平台: ${platform}`,
     launchError: (msg) => `\u274C 启动打开请求时出错: ${msg}`,
+  },
+
+  fc_preview_file: {
+    description: '首先返回 MIME 类型、大小和预览能力。仅在 include_content=true 且不超过固定内联限制时，才通过标准 MCP 文本、图像或资源内容返回文件内容。',
+    metadataOnly: (targetPath, mimeType, sizeBytes, reason) => `文件元数据: ${targetPath} (${mimeType}, ${sizeBytes} 字节；${reason})。`,
+    contentIncluded: (targetPath, mimeType, sizeBytes) => `内联内容: ${targetPath} (${mimeType}, ${sizeBytes} 字节)。`,
+    previewError: (targetPath, msg) => `\u274C ${targetPath} 的预览错误: ${msg}`,
   },
 
   fc_get_time: {

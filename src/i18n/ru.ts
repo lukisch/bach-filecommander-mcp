@@ -174,13 +174,21 @@ export const ru: Translations = {
   },
 
   fc_open_path: {
-    description: 'Открывает существующий локальный файл или каталог в приложении операционной системы по умолчанию.',
+    description: 'Запускает системное приложение по умолчанию для существующего локального файла или каталога. Структурированный вывод разделяет launcher_accepted и user_visible=unknown и указывает удалённый резервный вариант.',
     launchRequested: (targetPath, platform) => `\uD83D\uDE80 Запрос на открытие запущен: ${targetPath} (платформа: ${platform})`,
     noVisibleConfirmation: 'Системный механизм запуска принял запрос; видимое открытие целевого приложения автоматически не подтверждается.',
+    fallbackRecommended: (fallback) => `Удалённый/headless резервный вариант: ${fallback}`,
     notFound: (targetPath) => `\u274C Путь не найден: ${targetPath}`,
     unsupportedTarget: (targetPath) => `\u274C Путь не является обычным файлом или каталогом: ${targetPath}`,
     unsupportedPlatform: (platform) => `\u274C Неподдерживаемая платформа: ${platform}`,
     launchError: (msg) => `\u274C Ошибка запуска запроса на открытие: ${msg}`,
+  },
+
+  fc_preview_file: {
+    description: 'Сначала возвращает MIME-тип, размер и возможность предпросмотра. Содержимое возвращается только после include_content=true и только в пределах фиксированного лимита как стандартный MCP-текст, изображение или ресурс.',
+    metadataOnly: (targetPath, mimeType, sizeBytes, reason) => `Метаданные файла: ${targetPath} (${mimeType}, ${sizeBytes} байт; ${reason}).`,
+    contentIncluded: (targetPath, mimeType, sizeBytes) => `Встроенное содержимое: ${targetPath} (${mimeType}, ${sizeBytes} байт).`,
+    previewError: (targetPath, msg) => `\u274C Ошибка предпросмотра ${targetPath}: ${msg}`,
   },
 
   fc_get_time: {

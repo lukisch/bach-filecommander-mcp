@@ -174,13 +174,21 @@ export const ja: Translations = {
   },
 
   fc_open_path: {
-    description: '既存のローカルファイルまたはディレクトリを、オペレーティングシステムの既定のアプリケーションで開きます。',
+    description: '既存のローカルファイルまたはディレクトリに対してOSの既定アプリケーションを起動します。構造化出力は launcher_accepted と user_visible=unknown を区別し、リモート用フォールバックを示します。',
     launchRequested: (targetPath, platform) => `\uD83D\uDE80 開く要求を開始しました: ${targetPath}（プラットフォーム: ${platform}）`,
     noVisibleConfirmation: 'ネイティブランチャーが要求を受け付けました。対象アプリケーションが画面に表示されたことは自動的には確認されません。',
+    fallbackRecommended: (fallback) => `リモート/ヘッドレス用フォールバック: ${fallback}`,
     notFound: (targetPath) => `\u274C パスが見つかりません: ${targetPath}`,
     unsupportedTarget: (targetPath) => `\u274C パスは通常ファイルでもディレクトリでもありません: ${targetPath}`,
     unsupportedPlatform: (platform) => `\u274C サポートされていないプラットフォーム: ${platform}`,
     launchError: (msg) => `\u274C 開く要求の開始エラー: ${msg}`,
+  },
+
+  fc_preview_file: {
+    description: '最初にMIMEタイプ、サイズ、プレビュー可否を返します。include_content=true が指定され、固定インライン上限以内の場合だけ、標準MCPのテキスト、画像、またはリソースとして内容を返します。',
+    metadataOnly: (targetPath, mimeType, sizeBytes, reason) => `ファイルメタデータ: ${targetPath} (${mimeType}, ${sizeBytes} バイト; ${reason})。`,
+    contentIncluded: (targetPath, mimeType, sizeBytes) => `インライン内容: ${targetPath} (${mimeType}, ${sizeBytes} バイト)。`,
+    previewError: (targetPath, msg) => `\u274C ${targetPath} のプレビューエラー: ${msg}`,
   },
 
   fc_get_time: {

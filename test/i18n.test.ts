@@ -113,6 +113,9 @@ describe("i18n language packs", () => {
       expect(t().fc_open_path.launchRequested("C:/OneDrive/Prüfung ä.pdf", "win32")).toContain(expectations[lang]);
       expect(t().fc_open_path.launchRequested("C:/OneDrive/Prüfung ä.pdf", "win32")).toContain("Prüfung ä.pdf");
       expect(t().fc_open_path.noVisibleConfirmation).toBeTruthy();
+      expect(t().fc_open_path.fallbackRecommended("fc_preview_file")).toContain("fc_preview_file");
+      expect(t().fc_preview_file.description).toContain("MIME");
+      expect(t().fc_preview_file.metadataOnly("demo.png", "image/png", 4, "metadata_only")).toContain("demo.png");
     }
   });
 

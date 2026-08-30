@@ -195,13 +195,22 @@ export const de: Translations = {
 
   // ==================== fc_open_path ====================
   fc_open_path: {
-    description: 'Öffnet eine vorhandene lokale Datei oder einen Ordner mit der Standardanwendung des Betriebssystems.',
+    description: 'Startet für eine vorhandene lokale Datei oder einen Ordner die Standardanwendung. Die strukturierte Rückgabe trennt launcher_accepted von user_visible=unknown und nennt einen Remote-Fallback.',
     launchRequested: (targetPath, platform) => `\uD83D\uDE80 Öffnungsanforderung gestartet: ${targetPath} (Plattform: ${platform})`,
     noVisibleConfirmation: 'Der native Launcher hat die Anforderung angenommen; eine sichtbar geöffnete Zielanwendung wird nicht automatisch bestätigt.',
+    fallbackRecommended: (fallback) => `Remote-/Headless-Fallback: ${fallback}`,
     notFound: (targetPath) => `\u274C Pfad nicht gefunden: ${targetPath}`,
     unsupportedTarget: (targetPath) => `\u274C Der Pfad ist weder eine normale Datei noch ein Ordner: ${targetPath}`,
     unsupportedPlatform: (platform) => `\u274C Nicht unterstützte Plattform: ${platform}`,
     launchError: (msg) => `\u274C Fehler beim Starten der Öffnungsanforderung: ${msg}`,
+  },
+
+  // ==================== fc_preview_file ====================
+  fc_preview_file: {
+    description: 'Liefert zuerst MIME-Typ, Größe und Vorschaufähigkeit einer lokalen Datei. Inhalt wird nur nach include_content=true und nur bis zum festen Inline-Limit als MCP-Text-, Bild- oder Resource-Content zurückgegeben.',
+    metadataOnly: (targetPath, mimeType, sizeBytes, reason) => `Dateimetadaten: ${targetPath} (${mimeType}, ${sizeBytes} Byte; ${reason}).`,
+    contentIncluded: (targetPath, mimeType, sizeBytes) => `Inline-Inhalt: ${targetPath} (${mimeType}, ${sizeBytes} Byte).`,
+    previewError: (targetPath, msg) => `\u274C Vorschaufehler für ${targetPath}: ${msg}`,
   },
 
   // ==================== fc_get_time ====================

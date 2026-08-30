@@ -200,10 +200,19 @@ export interface Translations {
     description: string;
     launchRequested: (targetPath: string, platform: string) => string;
     noVisibleConfirmation: string;
+    fallbackRecommended: (fallback: string) => string;
     notFound: (targetPath: string) => string;
     unsupportedTarget: (targetPath: string) => string;
     unsupportedPlatform: (platform: string) => string;
     launchError: (msg: string) => string;
+  };
+
+  // ==================== fc_preview_file ====================
+  fc_preview_file: {
+    description: string;
+    metadataOnly: (targetPath: string, mimeType: string, sizeBytes: number, reason: string) => string;
+    contentIncluded: (targetPath: string, mimeType: string, sizeBytes: number) => string;
+    previewError: (targetPath: string, msg: string) => string;
   };
 
   // ==================== fc_get_time ====================

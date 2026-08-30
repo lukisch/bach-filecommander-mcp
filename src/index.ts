@@ -9,7 +9,7 @@
  * See LICENSE file for details.
  *
  * @author Lukas (BACH)
- * @version 1.10.4
+ * @version 1.11.0
  * @license MIT
  */
 
@@ -44,7 +44,13 @@ import {
   type SearchContentErrorCode,
   type SearchContentResult,
 } from "./search-content.js";
-import { OpenPathError, openPath } from "./open-path.js";
+import {
+  createOpenPathErrorStructuredContent,
+  createOpenPathStructuredContent,
+  OpenPathError,
+  openPath,
+} from "./open-path.js";
+import { previewFile, PreviewFileError } from "./preview-file.js";
 
 const execAsync = promisify(exec);
 const nodeRequire = createRequire(import.meta.url);
@@ -55,7 +61,7 @@ const nodeRequire = createRequire(import.meta.url);
 
 const server = new McpServer({
   name: "ellmos-filecommander-mcp",
-  version: "1.10.4"
+  version: "1.11.0"
 });
 
 // ============================================================================
@@ -1774,6 +1780,36 @@ server.registerTool(
     inputSchema: {
       path: z.string().min(1).describe("Existing local file or directory to open")
     },
+    outputSchema: {
+      launcher_accepted: z.boolean(),
+      user_visible: z.literal("unknown"),
+      path: z.string().nullable(),
+      platform: z.string().nullable(),
+      target_type: z.enum(["file", "directory"]).nullable(),
+      launcher: z.enum(["powershell.exe", "open", "xdg-open"]).nullable(),
+      fallback: z.union([
+        z.object({
+          tool: z.literal("fc_preview_file"),
+          arguments: z.object({
+            path: z.string(),
+            include_content: z.literal(false),
+          }),
+        }),
+        z.object({
+          tool: z.literal("fc_list_directory"),
+          arguments: z.object({
+            path: z.string(),
+            depth: z.literal(1),
+          }),
+        }),
+      ]).nullable(),
+      error_code: z.enum([
+        "PATH_NOT_FOUND",
+        "UNSUPPORTED_TARGET",
+        "UNSUPPORTED_PLATFORM",
+        "LAUNCH_FAILED",
+      ]).nullable(),
+    },
     annotations: {
       readOnlyHint: false,
       destructiveHint: false,
@@ -1784,10 +1820,12 @@ server.registerTool(
   async (params) => {
     try {
       const result = await openPath(params.path);
+      const structuredContent = createOpenPathStructuredContent(result);
       return {
+        structuredContent,
         content: [{
           type: "text",
-          text: `${t().fc_open_path.launchRequested(result.resolvedPath, result.platform)}\n${t().fc_open_path.noVisibleConfirmation}`
+          text: `${t().fc_open_path.launchRequested(result.resolvedPath, result.platform)}\n${t().fc_open_path.noVisibleConfirmation}\n${t().fc_open_path.fallbackRecommended(JSON.stringify(result.fallback))}\n${JSON.stringify(structuredContent)}`
         }]
       };
     } catch (error) {
@@ -1809,12 +1847,100 @@ server.registerTool(
           text = t().fc_open_path.launchError(errorMsg);
       }
 
+      const structuredError = openError ?? new OpenPathError(
+        "LAUNCH_FAILED",
+        errorMsg,
+        params.path,
+        process.platform,
+      );
       return {
         isError: true,
+        structuredContent: createOpenPathErrorStructuredContent(structuredError, params.path),
         content: [{ type: "text", text }]
       };
     }
   }
+);
+
+// ============================================================================
+// Tool: Preview File (remote/headless inline fallback)
+// ============================================================================
+
+server.registerTool(
+  "fc_preview_file",
+  {
+    title: "Preview File",
+    description: t().fc_preview_file.description,
+    inputSchema: {
+      path: z.string().min(1).describe("Existing local file to inspect or preview"),
+      include_content: z.boolean().default(false).describe(
+        "Explicitly request bounded inline content after inspecting metadata",
+      ),
+    },
+    outputSchema: {
+      path: z.string(),
+      uri: z.string(),
+      mime_type: z.string(),
+      size_bytes: z.number().nonnegative(),
+      preview_kind: z.enum(["text", "image", "resource", "unsupported"]),
+      content_requested: z.boolean(),
+      content_included: z.boolean(),
+      max_inline_bytes: z.number().positive(),
+      reason: z.enum([
+        "metadata_only",
+        "included",
+        "file_too_large",
+        "unsupported_media_type",
+      ]),
+      content_request: z.object({
+        tool: z.literal("fc_preview_file"),
+        arguments: z.object({
+          path: z.string(),
+          include_content: z.literal(true),
+        }),
+      }).nullable(),
+    },
+    annotations: {
+      readOnlyHint: true,
+      destructiveHint: false,
+      idempotentHint: true,
+      openWorldHint: false,
+    },
+  },
+  async (params) => {
+    try {
+      const result = await previewFile(params.path, { includeContent: params.include_content });
+      const summary = result.structuredContent.content_included
+        ? t().fc_preview_file.contentIncluded(
+          result.structuredContent.path,
+          result.structuredContent.mime_type,
+          result.structuredContent.size_bytes,
+        )
+        : t().fc_preview_file.metadataOnly(
+          result.structuredContent.path,
+          result.structuredContent.mime_type,
+          result.structuredContent.size_bytes,
+          result.structuredContent.reason,
+        );
+      return {
+        structuredContent: result.structuredContent,
+        content: [
+          { type: "text" as const, text: `${summary}\n${JSON.stringify(result.structuredContent)}` },
+          ...(result.contentBlock ? [result.contentBlock] : []),
+        ],
+      };
+    } catch (error) {
+      const previewError = error instanceof PreviewFileError ? error : undefined;
+      const message = error instanceof Error ? error.message : String(error);
+      return {
+        isError: true,
+        content: [{
+          type: "text",
+          text: t().fc_preview_file.previewError(previewError?.targetPath ?? params.path, message),
+        }],
+      };
+    }
+  },
 );
 
 // ============================================================================
