@@ -51,6 +51,7 @@ import {
   openPath,
 } from "./open-path.js";
 import { previewFile, PreviewFileError } from "./preview-file.js";
+import { inspectCloudTargetState } from "./cloud-lock.js";
 
 const execAsync = promisify(exec);
 const nodeRequire = createRequire(import.meta.url);
@@ -4928,16 +4929,24 @@ server.registerTool(
       lines.push(`| ${t().fc_check_cloud_lock.labelDriver} | ${driverLoaded ? t().fc_check_cloud_lock.driverActive : t().fc_check_cloud_lock.driverInactive} |`);
       lines.push(`| ${t().fc_check_cloud_lock.labelInSyncFolder} | ${matchedProvider ? `${matchedProvider.provider} (${matchedProvider.root})` : t().fc_check_cloud_lock.notInSyncFolder} |`);
 
-      const riskLevel = driverLoaded && matchedProvider
-        ? t().fc_check_cloud_lock.riskHigh
-        : driverLoaded || matchedProvider
-          ? t().fc_check_cloud_lock.riskMedium
-          : t().fc_check_cloud_lock.riskLow;
-      lines.push(`| ${t().fc_check_cloud_lock.labelRisk} | ${riskLevel} |`);
+      const targetState = await inspectCloudTargetState(targetPath);
+      const targetLabel = targetState.kind === 'missing'
+        ? t().fc_check_cloud_lock.targetMissing
+        : targetState.kind === 'file'
+          ? t().fc_check_cloud_lock.targetFile
+          : targetState.kind === 'directory'
+            ? t().fc_check_cloud_lock.targetDirectory
+            : targetState.kind === 'reparse-point'
+              ? t().fc_check_cloud_lock.targetReparse
+              : targetState.kind === 'other'
+                ? t().fc_check_cloud_lock.targetOther
+                : t().fc_check_cloud_lock.targetUnavailable(targetState.error || 'unknown error');
+      lines.push('| ' + t().fc_check_cloud_lock.labelTargetState + ' | ' + targetLabel + ' |');
+      lines.push('| ' + t().fc_check_cloud_lock.labelCloudState + ' | ' + t().fc_check_cloud_lock.notCheckedCloudState + ' |');
+      lines.push('| ' + t().fc_check_cloud_lock.labelProcessLock + ' | ' + t().fc_check_cloud_lock.notCheckedProcessLock + ' |');
+      lines.push('| ' + t().fc_check_cloud_lock.labelConclusion + ' | ' + t().fc_check_cloud_lock.staticOnly + ' |');
 
-      if (driverLoaded && matchedProvider) {
-        lines.push('', t().fc_check_cloud_lock.advice);
-      }
+      lines.push('', t().fc_check_cloud_lock.advice);
 
       return { content: [{ type: "text" as const, text: lines.join('\n') }] };
     } catch (error) {

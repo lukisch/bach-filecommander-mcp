@@ -505,7 +505,7 @@ export const de: Translations = {
 
   // ==================== fc_check_cloud_lock ====================
   fc_check_cloud_lock: {
-    description: 'Pr\u00FCft ob ein Pfad von einem Cloud-Sync-Filter (cldflt.sys) blockiert werden k\u00F6nnte. Nur auf Windows relevant.',
+    description: 'Meldet statischen Cloud-Sync-Kontext und verfügbaren Zielzustand. Sie behauptet keine aktive Sperre. Nur auf Windows relevant.',
     notApplicable: '\u2139\uFE0F Cloud-Lock-Pr\u00FCfung ist nur auf Windows relevant. Auf diesem System nicht anwendbar.',
     header: (p) => `\u2601\uFE0F **Cloud-Lock-Diagnose: ${p}**`,
     labelDriver: 'cldflt.sys Treiber',
@@ -513,6 +513,19 @@ export const de: Translations = {
     driverInactive: '\uD83D\uDFE2 Nicht geladen',
     labelInSyncFolder: 'In Sync-Ordner',
     notInSyncFolder: '\u2014 Nein',
+    labelTargetState: 'Zielzustand',
+    targetMissing: 'Fehlt (keine aktive Sperre erkannt)',
+    targetFile: 'Vorhandene Datei',
+    targetDirectory: 'Vorhandener Ordner',
+    targetReparse: 'Vorhandener Reparse Point / Symlink',
+    targetOther: 'Vorhandenes spezielles Dateisystemobjekt',
+    targetUnavailable: (message) => 'Nicht geprüft: ' + message,
+    labelCloudState: 'Cloud-Files-Hydration',
+    notCheckedCloudState: 'Nicht geprüft: Node bietet keine portable, nicht erhöhte API für Cloud-Files-Attribute',
+    labelProcessLock: 'Prozess-Handle-Sperre',
+    notCheckedProcessLock: 'Nicht geprüft: Keine portable, nicht erhöhte Handle-Inspektion verfügbar',
+    labelConclusion: 'Diagnoseergebnis',
+    staticOnly: 'static_risk_only - keine aktive Rename-Sperre erkannt',
     labelRisk: 'Lock-Risiko',
     riskHigh: '\uD83D\uDD34 Hoch \u2014 rename-Operationen k\u00F6nnen blockiert werden',
     riskMedium: '\uD83D\uDFE1 Mittel \u2014 Teilbedingung erf\u00FCllt',

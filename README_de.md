@@ -135,7 +135,7 @@ sequenceDiagram
 | **Lokales stdio & expliziter Egress** | Der MCP-Transport arbeitet lokal über stdio, ohne Telemetrie und ohne automatischen Netzwerk-Egress. `fc_web_fetch` sendet HTTP(S)-Anfragen nur nach einem ausdrücklichen Client-Aufruf; private Ziele sind standardmäßig gesperrt, sofern `allow_private` nicht aktiviert wird. | Macht die Netzwerkgrenze für Clients sichtbar und behält einen lokalen Servertransport ohne offene Ports bei. |
 | **Sicheres Löschen & Papierkorb-Schutz** | `fc_safe_delete` verschiebt Objekte in den Windows-Papierkorb / macOS Trash / Linux FreeDesktop Trash. `fc_set_safe_mode` schützt alle Löschoperationen. | Verhindert irreversiblen Datenverlust bei versehentlichen rekursiven Löschungen. |
 | **Cloud-Lock-robuste Verschiebung (`fc_move`)** | Automatische Erkennung von Cloud-Sync-Filter-Sperren (OneDrive, Dropbox, iCloud) mit nahtlosem Copy+Verify+Delete-Fallback. | Beseitigt `EPERM`- und `EBUSY`-Abbrüche bei agentischen Dateioperationen in synchronisierten Ordnern. |
-| **Cloud-Lock-Diagnose (`fc_check_cloud_lock`)** | Vorabprüfung auf Offline-Sync-Attribute, Reparse Points und Platzhalter-Zustände. | KI-Agenten können unvollständig synchronisierte oder gesperrte Cloud-Dateien vorab erkennen. |
+| **Cloud-Lock-Diagnose (`fc_check_cloud_lock`)** | Lesender Bericht über statischen Cloud-Pfadkontext sowie Existenz/Typ des Ziels; Cloud-Files-Hydration und Prozess-Handles werden bei fehlender Prüfung ausdrücklich markiert. | Agenten unterscheiden statisches OneDrive-Risiko von einer tatsächlich erkannten Rename-Sperre. |
 | **Begrenzte Mehrdatei-Inhaltssuche** | `fc_search_content` limitiert Eingaben strikt (max. 50 explizite Dateien, 10 MB/Datei, 200 Treffer, 200k Zeichen) ohne Glob-Rekursion. | Verhindert Speicherüberläufe und CPU-Blockaden bei der Analyse großer Repositories. |
 | **Automatische Geheimnis- & Token-Schwärzung** | Inhaltsauszüge maskieren bekannte API-Schlüssel, Bearer-Tokens, AWS-Credentials und Authentifizierungs-Header automatisch. | Verhindert Kontext-Kontamination und versehentlichen Abfluss von Zugangsdaten in LLM-Prompts. |
 | **Interaktive REPL- & Sitzungs-Isolation** | Zustandsbehaftete interaktive Sitzungen (`fc_start_session`, `fc_send_input`, `fc_read_output`) für Python, Node.js, Bash und PowerShell mit Puffergrenzen. | Ermöglicht mehrstufiges REPL-Debugging ohne unkontrollierte Hintergrundprozesse. |
@@ -307,7 +307,7 @@ Der Server kommuniziert über **stdio transport**. Verweisen Sie Ihren MCP-Clien
 
 | Tool | Beschreibung |
 |------|-------------|
-| `fc_check_cloud_lock` | Diagnose ob ein Pfad von Cloud-Sync-Filtern blockiert werden könnte (Windows) |
+| `fc_check_cloud_lock` | Meldet statischen Cloud-Sync-Kontext und Zielzustand; behauptet ohne Beleg keine aktive Sperre (Windows) |
 
 ### System (4 Tools)
 

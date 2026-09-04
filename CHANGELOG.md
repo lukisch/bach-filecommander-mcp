@@ -1,5 +1,10 @@
 # Changelog
 
+## [Unreleased]
+
+### Fixed
+- `fc_check_cloud_lock` now distinguishes static cloud-path context from an active rename lock. It reports target existence/type and explicitly marks Cloud Files hydration and process-handle checks as not checked when unavailable, rather than treating `cldflt.sys` plus a OneDrive path as a confirmed `HIGH` lock.
+
 All notable changes to this project will be documented in this file.
 
 ## [1.11.0] - 2026-08-30

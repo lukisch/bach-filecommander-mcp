@@ -135,7 +135,7 @@ sequenceDiagram
 | **Local stdio & explicit egress** | The MCP transport is local stdio, with no telemetry and no automatic network egress. `fc_web_fetch` makes outbound HTTP(S) requests only when a client explicitly invokes it; private targets are blocked by default unless `allow_private` is enabled. | Makes the network boundary visible to clients while retaining a local, port-free server transport. |
 | **Safe Deletion & Trash Protection** | `fc_safe_delete` moves items to Windows Recycle Bin / macOS Trash / Linux FreeDesktop Trash. `fc_set_safe_mode` routes all deletes safely. | Prevents irreversible data loss from accidental recursive or bulk deletions. |
 | **Cloud-Lock Resilient Move (`fc_move`)** | Automatic detection of cloud sync filters (OneDrive, Dropbox, iCloud reparse points) with seamless copy+verify+delete fallback. | Eliminates `EPERM` / `EBUSY` failures during automated agent operations in sync directories. |
-| **Cloud-Lock Diagnosis (`fc_check_cloud_lock`)** | Pre-flight inspection for offline sync attributes, reparse points, and placeholder file states. | AI agents can avoid operating on un-hydrated or locked cloud files before execution. |
+| **Cloud-Lock Diagnosis (`fc_check_cloud_lock`)** | Read-only report of static cloud-path context plus target existence/type; Cloud Files hydration and process handles are explicitly reported as not checked when unavailable. | Agents can distinguish static OneDrive risk from an actual detected rename lock. |
 | **Bounded Multi-File Content Search** | `fc_search_content` strictly caps inputs (max 50 explicit files, 10 MB per file, 200 matches, 200k chars) without glob recursion. | Prevents out-of-memory errors and catastrophic CPU lockups during large repository searches. |
 | **Automated Secret & Token Redaction** | Content search excerpts automatically mask common API keys, bearer tokens, AWS credentials, and authorization headers. | Prevents LLM context contamination and accidental credential leakage in prompt history. |
 | **Interactive REPL & Session Isolation** | Stateful interactive sessions (`fc_start_session`, `fc_send_input`, `fc_read_output`) for Python, Node.js, bash, and PowerShell with bounded buffers. | Allows multi-turn REPL debugging without unconstrained background process buildup. |
@@ -307,7 +307,7 @@ The server communicates via **stdio transport**. Point your MCP client to the `d
 
 | Tool | Description |
 |------|-------------|
-| `fc_check_cloud_lock` | Diagnose whether a path may be blocked by cloud sync filters (Windows) |
+| `fc_check_cloud_lock` | Report static cloud-sync context and target state; never claim an active lock without evidence (Windows) |
 
 ### System (4 tools)
 

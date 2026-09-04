@@ -505,7 +505,7 @@ export const en: Translations = {
 
   // ==================== fc_check_cloud_lock ====================
   fc_check_cloud_lock: {
-    description: 'Checks whether a path might be blocked by a cloud sync filter (cldflt.sys). Windows only.',
+    description: 'Reports static cloud-sync context and available target state. It does not claim that a path is actively locked. Windows only.',
     notApplicable: '\u2139\uFE0F Cloud lock check is only relevant on Windows. Not applicable on this system.',
     header: (p) => `\u2601\uFE0F **Cloud Lock Diagnosis: ${p}**`,
     labelDriver: 'cldflt.sys driver',
@@ -513,6 +513,19 @@ export const en: Translations = {
     driverInactive: '\uD83D\uDFE2 Not loaded',
     labelInSyncFolder: 'In sync folder',
     notInSyncFolder: '\u2014 No',
+    labelTargetState: 'Target state',
+    targetMissing: 'Missing (no active lock detected)',
+    targetFile: 'Existing file',
+    targetDirectory: 'Existing directory',
+    targetReparse: 'Existing reparse point / symlink',
+    targetOther: 'Existing special filesystem object',
+    targetUnavailable: (message) => 'Not checked: ' + message,
+    labelCloudState: 'Cloud Files hydration',
+    notCheckedCloudState: 'Not checked: no portable, unprivileged Node API for Cloud Files attributes',
+    labelProcessLock: 'Process handle lock',
+    notCheckedProcessLock: 'Not checked: no portable, unprivileged handle inspection is available',
+    labelConclusion: 'Diagnostic conclusion',
+    staticOnly: 'static_risk_only - no active rename lock was detected',
     labelRisk: 'Lock risk',
     riskHigh: '\uD83D\uDD34 High \u2014 rename operations may be blocked',
     riskMedium: '\uD83D\uDFE1 Medium \u2014 partial condition met',
