@@ -51,6 +51,29 @@ TODO.md
 
 # lock system (multi-agent coordination, host-local, never commit)
 LOCK*.txt
+LOCK.*
+*.lock
+!package-lock.json
+
+# Multi-host sync conflict copies
+*.sync-conflict-*
+*.conflict
+*-CONFLIT-*
+*-conflict-*
+
+# Temporary files & editor backups
+*.tmp
+*.bak
+*.swp
+*~
+
+# Test & coverage caches
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+.wheel-smoke/
 
 # Lokale Ablage verworfener Artefakte
 _archive/
+

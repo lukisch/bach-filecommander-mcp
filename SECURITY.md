@@ -45,10 +45,10 @@ By design, `ellmos-filecommander-mcp` provides AI assistants and MCP clients wit
 ### Reporting Vulnerabilities
 
 If you discover a security vulnerability, please report it responsibly:
-- **Email**: [security@ellmos.ai](mailto:security@ellmos.ai) or [support@lukasgeiger.com](mailto:support@lukasgeiger.com) / [lukas@open-bricks.org](mailto:lukas@open-bricks.org)
+- **Email**: [security@open-bricks.org](mailto:security@open-bricks.org) (Umbrella Security), [security@ellmos.ai](mailto:security@ellmos.ai), [support@lukasgeiger.com](mailto:support@lukasgeiger.com), or [lukas@open-bricks.org](mailto:lukas@open-bricks.org)
 - **GitHub**: [GitHub Security Advisories](https://github.com/ellmos-ai/ellmos-filecommander-mcp/security/advisories)
 
-We aim to respond to security reports within 24 hours and provide timely remediation.
+We commit to a binding initial response SLA within 48 hours and a formal triage assessment within 5 business days.
 
 ### Supported Versions
 
@@ -100,8 +100,10 @@ We aim to respond to security reports within 24 hours and provide timely remedia
 ### Schwachstellen melden
 
 Bitte melden Sie gefundene Sicherheitslücken direkt an:
-- **E-Mail**: [security@ellmos.ai](mailto:security@ellmos.ai) oder [support@lukasgeiger.com](mailto:support@lukasgeiger.com) / [lukas@open-bricks.org](mailto:lukas@open-bricks.org)
+- **E-Mail**: [security@open-bricks.org](mailto:security@open-bricks.org) (Dachorganisation Security), [security@ellmos.ai](mailto:security@ellmos.ai), [support@lukasgeiger.com](mailto:support@lukasgeiger.com) oder [lukas@open-bricks.org](mailto:lukas@open-bricks.org)
 - **GitHub**: [GitHub Security Advisories](https://github.com/ellmos-ai/ellmos-filecommander-mcp/security/advisories)
+
+Wir garantieren eine verbindliche Eingangsbestätigung (Initial Response SLA) innerhalb von 48 Stunden sowie eine strukturierte Triage-Rückmeldung innerhalb von 5 Werktagen.
 
 ### Unterstützte Versionen
 

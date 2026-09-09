@@ -27,14 +27,17 @@ describe('Metadata, Registry Manifest and Discoverability Parity', () => {
     expect(existsSync(securityPath)).toBe(true);
   });
 
-  it('maintains exact version parity across package.json, server.json, glama.json, and src/index.ts', () => {
+  it('maintains exact version parity across package.json, server.json, glama.json, package-lock.json, and src/index.ts', () => {
     const pkg = JSON.parse(readFileSync(pkgPath, 'utf-8'));
     const server = JSON.parse(readFileSync(serverPath, 'utf-8'));
     const glama = JSON.parse(readFileSync(glamaPath, 'utf-8'));
+    const lock = JSON.parse(readFileSync(resolve(ROOT, 'package-lock.json'), 'utf-8'));
     const srcIndex = readFileSync(srcIndexPath, 'utf-8');
 
     expect(server.version).toBe(pkg.version);
     expect(glama.version).toBe(pkg.version);
+    expect(lock.version).toBe(pkg.version);
+    expect(lock.packages[''].version).toBe(pkg.version);
     expect(server.packages[0].version).toBe(pkg.version);
     expect(srcIndex).toContain(`version: "${pkg.version}"`);
     expect(srcIndex).toContain(`* @version ${pkg.version}`);
@@ -64,9 +67,9 @@ describe('Metadata, Registry Manifest and Discoverability Parity', () => {
     expect(files).toContain('llms.txt');
   });
 
-  it('llms.txt is synchronized with 2026-08-30 and accurate ecosystem tools', () => {
+  it('llms.txt is synchronized with 2026-09-09 and accurate ecosystem tools', () => {
     const llms = readFileSync(llmsPath, 'utf-8');
-    expect(llms).toContain('## Last-checked: 2026-08-30');
+    expect(llms).toContain('## Last-checked: 2026-09-09');
     expect(llms).toContain('50 tools');
     expect(llms).toContain('fc_preview_file');
     expect(llms).toContain('fc_search_content');
@@ -81,7 +84,7 @@ describe('Metadata, Registry Manifest and Discoverability Parity', () => {
     expect(llms).toContain('16 tools');
   });
 
-  it('SECURITY.md contains bilingual policy, explicit egress boundaries, and contact endpoints', () => {
+  it('SECURITY.md contains bilingual policy, umbrella contacts, and 48h / 5-day SLAs', () => {
     const sec = readFileSync(securityPath, 'utf-8');
     expect(sec).toContain('Security Policy / Sicherheitsrichtlinie');
     expect(sec).toContain('English: Security Policy');
@@ -93,12 +96,37 @@ describe('Metadata, Registry Manifest and Discoverability Parity', () => {
     expect(sec).toContain('fc_start_session');
     expect(sec).toContain('fc_set_safe_mode');
     expect(sec).toContain('fc_check_cloud_lock');
+    expect(sec).toContain('security@open-bricks.org');
     expect(sec).toContain('security@ellmos.ai');
     expect(sec).toContain('support@lukasgeiger.com');
+    expect(sec).toContain('lukas@open-bricks.org');
+    expect(sec).toContain('48 hours');
+    expect(sec).toContain('48 Stunden');
+    expect(sec).toContain('5 business days');
+    expect(sec).toContain('5 Werktagen');
     expect(sec).toContain('1.11.x');
   });
 
-  it('GitHub Actions CI workflow uses multi-OS matrix, v4 actions, and concurrency control', () => {
+  it('verifies .gitignore hardening for conflict copies, multi-agent locks, and temporary files', () => {
+    const gitignorePath = resolve(ROOT, '.gitignore');
+    expect(existsSync(gitignorePath)).toBe(true);
+    const gitignore = readFileSync(gitignorePath, 'utf-8');
+    expect(gitignore).toContain('*.sync-conflict-*');
+    expect(gitignore).toContain('*.conflict');
+    expect(gitignore).toContain('*-CONFLIT-*');
+    expect(gitignore).toContain('*-conflict-*');
+    expect(gitignore).toContain('LOCK.*');
+    expect(gitignore).toContain('*.lock');
+    expect(gitignore).toContain('!package-lock.json');
+    expect(gitignore).toContain('*.tmp');
+    expect(gitignore).toContain('*.bak');
+    expect(gitignore).toContain('*.swp');
+    expect(gitignore).toContain('*~');
+    expect(gitignore).toContain('.pytest_cache/');
+    expect(gitignore).toContain('.ruff_cache/');
+  });
+
+  it('GitHub Actions CI workflow uses multi-OS matrix, v4 actions, concurrency control, and packaging validation', () => {
     const ciPath = resolve(ROOT, '.github/workflows/tests.yml');
     expect(existsSync(ciPath)).toBe(true);
     const ci = readFileSync(ciPath, 'utf-8');
@@ -107,9 +135,12 @@ describe('Metadata, Registry Manifest and Discoverability Parity', () => {
     expect(ci).toContain('macos-latest');
     expect(ci).toContain('actions/checkout@v4');
     expect(ci).toContain('actions/setup-node@v4');
+    expect(ci).toContain('cache: npm');
     expect(ci).toContain('concurrency:');
     expect(ci).toContain('cancel-in-progress: true');
     expect(ci).toContain('npm test');
+    expect(ci).toContain('npm run build');
+    expect(ci).toContain('npm pack --dry-run');
   });
 
   it('README files contain valid badges, quick navigation, and architecture diagrams', () => {
@@ -120,7 +151,8 @@ describe('Metadata, Registry Manifest and Discoverability Parity', () => {
     expect(en).toContain('open-bricks');
     expect(en).toContain('mermaid');
     expect(en).toContain('50');
-    expect(en).toContain('tests-283%20passed');
+    expect(en).toContain('tests-286%20passed');
+    expect(en).toContain('security-48h%20SLA');
     expect(en).toContain('Quick Navigation:');
     expect(en).toContain('#core-capabilities--safety-invariants');
     expect(en).toContain('## Core Capabilities & Safety Invariants');
@@ -129,7 +161,8 @@ describe('Metadata, Registry Manifest and Discoverability Parity', () => {
     expect(de).toContain('open-bricks');
     expect(de).toContain('mermaid');
     expect(de).toContain('50');
-    expect(de).toContain('tests-283%20passed');
+    expect(de).toContain('tests-286%20passed');
+    expect(de).toContain('security-48h%20SLA');
     expect(de).toContain('Schnellnavigation:');
     expect(de).toContain('#kernfähigkeiten--sicherheitsinvarianten');
     expect(de).toContain('## Kernfähigkeiten & Sicherheitsinvarianten');

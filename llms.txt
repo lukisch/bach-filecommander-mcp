@@ -1,4 +1,4 @@
-## Last-checked: 2026-08-30
+## Last-checked: 2026-09-09
 
 # ellmos-filecommander-mcp - MCP Server for Filesystem and Process Access
 

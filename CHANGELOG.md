@@ -1,9 +1,13 @@
 # Changelog
 
-## [Unreleased]
+## [1.11.1] - 2026-09-09
 
-### Fixed
-- `fc_check_cloud_lock` now distinguishes static cloud-path context from an active rename lock. It reports target existence/type and explicitly marks Cloud Files hydration and process-handle checks as not checked when unavailable, rather than treating `cldflt.sys` plus a OneDrive path as a confirmed `HIGH` lock.
+### Repository Hygiene, Security Hardening & Parity Tests (Pfad A)
+- **.gitignore Hardening:** Shielded repository against multi-host conflict copies (`*.sync-conflict-*`, `*.conflict`, `*-CONFLIT-*`, `*-conflict-*`), multi-agent locks (`LOCK.*`, `*.lock`, `LOCK*.txt` while preserving `!package-lock.json`), temporary backup files (`*.tmp`, `*.bak`, `*.swp`, `*~`), and test/linter caches.
+- **Bilingual Security Policy SLAs:** Hardened `SECURITY.md` in English and German with umbrella organization contact (`security@open-bricks.org`), direct developer contacts, 48-hour initial response SLA, 5 business days triage commitment, and supported versions table (`1.11.x`).
+- **Automated Contract & Parity Test Suite:** Expanded `test/metadata-parity.test.ts` to 10 Vitest contract tests (286 passed checks: 215 Vitest + 71 i18n) covering version parity across `package.json`, `server.json`, `glama.json`, `package-lock.json`, and `src/index.ts`, `.gitignore` patterns, CI packaging dry-run gates, security SLAs, and discoverability.
+- **Cloud Lock Context Distinction:** `fc_check_cloud_lock` now distinguishes static cloud-path context from an active rename lock. It reports target existence/type and explicitly marks Cloud Files hydration and process-handle checks as not checked when unavailable, rather than treating `cldflt.sys` plus a OneDrive path as a confirmed `HIGH` lock.
+- **Documentation & Badges:** Synchronized Shields.io test badges to 286 passed tests and updated `llms.txt` `Last-checked` timestamp to `2026-09-09`.
 
 All notable changes to this project will be documented in this file.
 
